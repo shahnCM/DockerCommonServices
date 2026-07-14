@@ -1,0 +1,20 @@
+mysql-8:
+  image: mysql:8
+  container_name: mysql-8
+  restart: unless-stopped
+  environment:
+    MYSQL_USER: ${DB_MYSQL_USERNAME-dev_user}
+    MYSQL_PASSWORD: ${DB_MYSQL_PASSWORD-dev_password}
+    MYSQL_ROOT_PASSWORD: ${DB_MYSQL_ROOT_PASSWORD-dev_root_password}
+    MYSQL_DATABASE: ${DB_MYSQL_DATABASE-app}
+  ports:
+    - "3306:3306"
+  deploy:
+    resources:
+      limits:
+        memory: 512M
+        cpus: '1.0'
+  volumes:
+    - ${VOL_BASE}/vol-mysql-8/data:/var/lib/mysql
+  networks:
+    - common

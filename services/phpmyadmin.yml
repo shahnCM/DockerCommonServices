@@ -1,0 +1,15 @@
+phpmyadmin:
+  image: phpmyadmin:5
+  container_name: phpmyadmin
+  restart: unless-stopped
+  environment:
+    PMA_HOSTS: "mysql-8,mysql-5"
+    PMA_VERBOSES: "MySQL 8,MySQL 5"
+    UPLOAD_LIMIT: 128M
+  ports:
+    - "8880:80"
+  depends_on:
+    - mysql-8
+    - mysql-5
+  networks:
+    - common

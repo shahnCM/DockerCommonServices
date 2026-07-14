@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Installs node/go/java/maven/gradle defined in /etc/mise/config.toml
+# into /opt/mise. Safe to re-run anytime (e.g. after editing the config).
+set -e
+. /etc/profile.d/10-workstation.sh
+echo "== installing runtimes from /etc/mise/config.toml =="
+mise install --yes
+echo "== done =="
+mise ls
