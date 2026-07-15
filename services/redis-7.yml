@@ -2,16 +2,24 @@ redis-7:
   image: redis:7
   container_name: redis-7
   restart: always
+  # maxmemory deliberately BELOW the container limit: Redis errors loudly
+  # instead of getting silently OOM-killed by the cgroup.
+  # noeviction: evicting a queue job or Cache::lock key is a correctness
+  # bug, not a cache miss — writes should fail visibly at the ceiling.
+  command: redis-server --appendonly yes --maxmemory 400mb --maxmemory-policy noeviction
   ports:
     - 6379:6379
   deploy:
     resources:
       limits:
-        memory: 20M
+        memory: 512M
         cpus: '1.0'
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
   volumes:
     - ${VOL_BASE}/vol-redis-7:/data
   networks:
     - common
-        
-    

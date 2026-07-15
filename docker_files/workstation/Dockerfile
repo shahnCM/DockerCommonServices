@@ -49,6 +49,31 @@ RUN curl -fsSL https://getcomposer.org/installer -o /tmp/ci.php && \
       fi; \
     done
 
+# ---- Octane extras: opcache + swoole per version --------------
+# opcache isn't guaranteed under --no-install-recommends, and Octane
+# without opcache.enable_cli=1 loses most of its speed advantage.
+# swoole is guarded per version (available for newer PHPs in the PPA).
+RUN apt-get update && \
+    for v in ${PHP_VERSIONS}; do \
+      if [ -x /usr/bin/php${v} ]; then \
+        apt-get install -y --no-install-recommends php${v}-opcache \
+          || echo "!! php${v}-opcache not available, skipping"; \
+        apt-get install -y --no-install-recommends php${v}-swoole \
+          || echo "!! php${v}-swoole not available, skipping"; \
+        if [ -d /etc/php/${v}/cli/conf.d ]; then \
+          printf 'opcache.enable_cli=1\n' > /etc/php/${v}/cli/conf.d/99-octane.ini; \
+        fi; \
+      fi; \
+    done && rm -rf /var/lib/apt/lists/*
+
+# ---- FrankenPHP (primary Octane runtime) -----------------------
+# Static binary: embeds its own PHP, so the apt-installed PHPs above
+# are completely untouched. Verified asset name at php/frankenphp.
+RUN curl -fsSL https://github.com/php/frankenphp/releases/latest/download/frankenphp-linux-x86_64 \
+      -o /usr/local/bin/frankenphp && \
+    chmod +x /usr/local/bin/frankenphp && \
+    /usr/local/bin/frankenphp version
+
 # ---- mise (node / go / java / maven / gradle version manager) -
 RUN curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh
 COPY mise-config.toml /etc/mise/config.toml

@@ -11,6 +11,11 @@ workstation:
   tty: true
   stdin_open: true
   restart: unless-stopped
+  # thundering-herd load tests exhaust the default 1024 fds fast
+  ulimits:
+    nofile:
+      soft: 262144
+      hard: 262144
   working_dir: /projects
   environment:
     PHP_DEFAULT: ${PHP_DEFAULT-8.3}

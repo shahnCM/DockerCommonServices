@@ -1,0 +1,20 @@
+mailpit:
+  image: axllent/mailpit:latest
+  container_name: mailpit
+  restart: unless-stopped
+  environment:
+    MP_DATABASE: /data/mailpit.db
+    MP_MAX_MESSAGES: 5000
+  ports:
+    - "1025:1025"   # SMTP — Laravel: MAIL_HOST=mailpit MAIL_PORT=1025 (in-network)
+    - "8125:8025"   # web UI → http://localhost:8125
+                    # (host 8025 is already inside the workstation's WS_PORTS_A range)
+  healthcheck:
+    test: ["CMD", "/mailpit", "readyz"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+  volumes:
+    - ${VOL_BASE}/vol-mailpit:/data
+  networks:
+    - common

@@ -1,0 +1,22 @@
+postgres-16:
+  image: postgres:16
+  container_name: postgres-16
+  restart: unless-stopped
+  # default max_connections=100 is too low once Octane workers × instances
+  # stack up in load tests; app-side pooling still applies.
+  command: -c max_connections=200
+  environment:
+    POSTGRES_USER: ${DB_POSTGRES_USERNAME-admin}
+    POSTGRES_PASSWORD: ${DB_POSTGRES_PASSWORD-admin}
+    # POSTGRES_DB: ${DB_POSTGRES_DATABASE}
+  ports:
+    - '0.0.0.0:5433:5432'
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER}"]
+    interval: 5s
+    timeout: 3s
+    retries: 10
+  volumes:
+    - ${VOL_BASE}/vol-postgres-16:/var/lib/postgresql/data
+  networks:
+    - common
