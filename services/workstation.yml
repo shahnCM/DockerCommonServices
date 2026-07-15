@@ -1,0 +1,32 @@
+workstation:
+  build:
+    context: ${DOCKER_FILES_BASE}/workstation
+    args:
+      USER_UID: ${USER_UID-1000}
+      USER_GID: ${USER_GID-1000}
+      PHP_VERSIONS: ${PHP_VERSIONS-7.2 7.4 8.0 8.1 8.2 8.3 8.4}
+  container_name: workstation
+  hostname: workstation
+  init: true
+  tty: true
+  stdin_open: true
+  restart: unless-stopped
+  # thundering-herd load tests exhaust the default 1024 fds fast
+  ulimits:
+    nofile:
+      soft: 262144
+      hard: 262144
+  working_dir: /projects
+  environment:
+    PHP_DEFAULT: ${PHP_DEFAULT-8.3}
+  volumes:
+    - ${PROJECTS_BASE-./projects}:/projects
+    - ${VOL_BASE}/vol-workstation/home:/home/dev
+    - ${VOL_BASE}/vol-workstation/mise:/opt/mise
+    - ${VOL_BASE}/vol-workstation/caches:/opt/caches
+  ports:
+    - "${WS_PORTS_A-8000-8099}:${WS_PORTS_A-8000-8099}"
+    - "${WS_PORTS_B-3000-3010}:${WS_PORTS_B-3000-3010}"
+    - "${WS_PORTS_C-5173-5180}:${WS_PORTS_C-5173-5180}"
+  networks:
+    - common

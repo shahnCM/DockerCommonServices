@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# php-default 8.1   → plain `php` / `composer` now use 8.1
+# (writes symlinks into ~/.local/bin, which is a persistent volume,
+#  so your choice survives container rebuilds — no sudo needed)
+set -e
+v="${1:-}"
+if [ -z "$v" ] || [ ! -x "/usr/bin/php$v" ]; then
+  echo "usage: php-default <version>    installed:"
+  ls /usr/bin/php?.? | sed 's|/usr/bin/php|  |'
+  exit 1
+fi
+mkdir -p "$HOME/.local/bin"
+for b in php phpize php-config; do
+  [ -e "/usr/bin/$b$v" ] && ln -sf "/usr/bin/$b$v" "$HOME/.local/bin/$b"
+done
+echo "default php → $v"
+"$HOME/.local/bin/php" -v | head -1

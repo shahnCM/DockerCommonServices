@@ -1,0 +1,16 @@
+# /etc/mise/config.toml — system-wide defaults.
+# Installed once into /opt/mise (a bind mount → survives rebuilds).
+# Per-project overrides: drop a .mise.toml or .tool-versions in the
+# project folder and the version switches automatically on `cd`.
+#
+# Add more anytime:  mise use -g node@18   |   mise install go@1.21
+
+[tools]
+node = "lts"
+go = "latest"
+java = "temurin-21"
+maven = "latest"
+gradle = "latest"
+
+[settings]
+experimental = true

@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# dev — your door into the workstation. Put bin/ on your PATH.
+#
+#   dev                  open a shell (maps your current projects/ subdir)
+#   dev php7.2 -v        run any command inside, from where you are
+#   dev up|down|restart  manage the container
+#   dev rebuild          rebuild image (after editing the Dockerfile)
+#   dev logs             container logs (bootstrap progress etc.)
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SVC="workstation"
+
+env_get() {
+  grep -E "^$1=" "$ROOT/.env" 2>/dev/null |
+    tail -1 |
+    cut -d= -f2- |
+    envsubst
+}
+
+VOL_BASE="$(env_get VOL_BASE)"
+VOL_BASE="${VOL_BASE:-./volumes}"
+
+PROJECTS_BASE="$(env_get PROJECTS_BASE)"
+PROJECTS_BASE="${PROJECTS_BASE:-./projects}"
+
+abspath() {
+  case "$1" in
+    /*) echo "$1" ;;
+    *)  echo "$ROOT/${1#./}" ;;
+  esac
+}
+
+VOL_DIR="$(abspath "$VOL_BASE")"
+PROJ_DIR="$(abspath "$PROJECTS_BASE")"
+
+# Pre-create bind-mount directories so Docker does not create them as root.
+mkdir -p \
+  "$PROJ_DIR" \
+  "$VOL_DIR/vol-workstation/home" \
+  "$VOL_DIR/vol-workstation/mise" \
+  "$VOL_DIR/vol-workstation/caches"
+
+dc() {
+  docker compose --project-directory "$ROOT" "$@"
+}
+
+dc_exec() {
+  exec docker compose --project-directory "$ROOT" "$@"
+}
+
+running() {
+  dc ps --status running --services 2>/dev/null |
+    grep -qx "$SVC"
+}
+
+ensure_up() {
+  running || {
+    echo "▸ starting $SVC ..."
+    dc up -d "$SVC"
+  }
+}
+
+# Map host cwd to the corresponding container path.
+target_dir() {
+  case "$PWD/" in
+    "$PROJ_DIR"/*)
+      echo "/projects${PWD#$PROJ_DIR}"
+      ;;
+    *)
+      echo "/projects"
+      ;;
+  esac
+}
+
+case "${1:-}" in
+  up)
+    ensure_up
+    ;;
+
+  down)
+    dc stop "$SVC"
+    ;;
+
+  restart)
+    dc restart "$SVC"
+    ;;
+
+  rebuild)
+    dc up -d --build "$SVC"
+    ;;
+
+  logs)
+    dc logs -f "$SVC"
+    ;;
+
+  ps|status)
+    dc ps "$SVC"
+    ;;
+
+  "")
+    ensure_up
+    dc_exec exec \
+      -u dev \
+      -w "$(target_dir)" \
+      "$SVC" \
+      bash -l
+    ;;
+
+  *)
+    ensure_up
+    dc_exec exec \
+      -u dev \
+      -w "$(target_dir)" \
+      "$SVC" \
+      bash -lc "$*"
+    ;;
+esac

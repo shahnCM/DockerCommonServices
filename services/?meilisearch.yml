@@ -1,0 +1,16 @@
+meilisearch:
+  image: getmeili/meilisearch:v1.49
+  container_name: meilisearch
+  restart: unless-stopped
+  environment:
+    MEILI_ENV: development
+    MEILI_NO_ANALYTICS: "true"
+    MEILI_MASTER_KEY: ${MEILI_MASTER_KEY-dev_master_key_change_me}
+  ports:
+    - "7700:7700"
+  # no healthcheck: the official image is minimal (no curl/wget guaranteed);
+  # probe from outside with: curl localhost:7700/health
+  volumes:
+    - ${VOL_BASE}/vol-meilisearch:/meili_data
+  networks:
+    - common

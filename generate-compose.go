@@ -21,7 +21,7 @@ func main() {
 
 func generateDockerComposeFile(servicesPath, outputFileName string) error {
 	var sb strings.Builder
-	sb.WriteString("version: '3.5'\nservices:\n\n")
+	sb.WriteString("services:\n\n")
 
 	serviceFiles, err := os.ReadDir(servicesPath)
 	if err != nil {

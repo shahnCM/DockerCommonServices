@@ -1,0 +1,15 @@
+# sourced from ~/.bashrc — interactive shells only
+. /etc/profile.d/10-workstation.sh
+
+# mise auto-switches node/go/java when you cd into a project
+command -v mise >/dev/null && eval "$(mise activate bash)"
+
+# prompt: make it obvious you're in the workstation
+PS1='\[\e[1;36m\]⬢ ws\[\e[0m\] \[\e[1;34m\]\w\[\e[0m\] \$ '
+
+if [ -f /opt/mise/.bootstrapping ]; then
+  echo "⏳ node/go/java still installing (one-time) — tail -f /opt/caches/bootstrap.log"
+fi
+
+alias ll='ls -alF'
+alias phpv='ls /usr/bin/php?.? | sed "s|/usr/bin/||"'   # list installed PHPs
