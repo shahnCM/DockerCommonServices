@@ -14,7 +14,8 @@ SVC="workstation"
 env_get() {
   grep -E "^$1=" "$ROOT/.env" 2>/dev/null |
     tail -1 |
-    cut -d= -f2-
+    cut -d= -f2- |
+    envsubst
 }
 
 VOL_BASE="$(env_get VOL_BASE)"
