@@ -1,186 +1,108 @@
-version: '3.5'
 services:
 
-  mongodb-7-express:
-    image: mongo-express:latest
-    container_name: mongodb-7-express
-    restart: always
-    ports:
-      - 8081:8081
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_EXPRESS_DB_USERNAME-admin}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_EXPRESS_DB_PASSWORD-admin}
-      ME_CONFIG_MONGODB_SERVER: ${MONGO_DB_SERVER_FOR_EXPRESS-mongodb-7}
-      ME_CONFIG_MONGODB_URL: ${MONGO_DB_URL_FOR_EXPRESS-mongodb-7}
-    deploy:
-      resources:
-        limits:
-          memory: 200M
-          cpus: '0.5'
-    depends_on:
-      - mongodb-7
-    networks:
-      - common
-
-  mongodb-7:
-    image: mongo:7
-    container_name: mongodb-7
-    restart: always
-    ports:
-      - 27017:27017
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD-admin}
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'  # Limit to 8 CPU threads
-          memory: 1G  # Limit to 10 GB of memory
-        # reservations:
-        #   cpus: '8.0'  # Reserve 8 CPU threads
-        #   memory: 10G  # Reserve 10 GB of memory
-    volumes:
-      - ${VOL_BASE}/vol-mongodb-7/data/db:/data/db
-      - ${VOL_BASE}/vol-mongodb-7/data/configdb:/data/configdb
-      # - ${VOL_BASE}/vol-mongodb-7/config/:/etc/mongo/
-    # command: ["mongod", "--config", "/etc/mongo/mongod.conf"]
-    networks:
-      - common  
-
-  nominatim:
-    build:
-      context: ${DOCKER_FILES_BASE}/nominatim
-    container_name: nominatim
-    environment:
-      PBF_PATH: /nominatim/files/bangladesh-latest.osm.pbf
-      NOMINATIM_PASSWORD: postgres
-    volumes:
-      - ${VOL_BASE}/vol-nominatim/files:/nominatim/files
-      - ${VOL_BASE}/vol-nominatim/data:/nominatim/data
-      - ${VOL_BASE}/vol-nominatim/postgres_data:/var/lib/postgresql/12/main
-      - ${VOL_BASE}/vol-nominatim/apache_logs:/var/log/apache2
-      - ${VOL_BASE}/vol-nominatim/nominatim_logs:/var/log/nominatim
-      - ${VOL_BASE}/vol-nominatim/nominatim_settings:/nominatim/settings
-      - ${VOL_BASE}/vol-nominatim/postgresql_conf:/etc/postgresql/12/main/postgresql.conf
-      - ${VOL_BASE}/vol-nominatim/tmp:/tmp/nominatim-tmp
-    ports:
-      - "8083:8080"
-  # deploy:
-  #   resources:
-  #     limits:
-  #       memory: 3G
-  #       cpus: '1.0'   
-    networks:
-      - common  
-
-  osm-tile-server:
-    build:
-      context: ${DOCKER_FILES_BASE}/osm-tile
-    image: overv/openstreetmap-tile-server
-    container_name: osm-tile-server
-    volumes:
-      - ${VOL_BASE}/vol-osm/data:/data/database/
-      - ${VOL_BASE}/vol-osm/tiles:/data/tiles/
-    ports:
-      - "8082:80"
-      - "54320:5432"
-  # deploy:
-  #   resources:
-  #     limits:
-  #       memory: 500M
-  #       cpus: '1.0'   
-    environment:
-      ALLOW_CORS: enabled
-      PGPASSWORD: osmtileserver
-    command: run
-  # command: ['import', 'run']
-    networks:
-      - common
-
-  osrm-walking:
-    container_name: osrm-walking
-    build:
-      context: ${DOCKER_FILES_BASE}/osrm-walking
-  # command: osrm-routed --algorithm mld /data/bangladesh-latest.osrm
-  # volumes:
-  # - ${VOL_BASE}/vol-osrm-walking/data:/data
-    ports:
-      - "5001:5000"
-    networks:
-      - common
-  osrm-bicycle:
-    container_name: osrm-bicycle
-    build:
-      context: ${DOCKER_FILES_BASE}/osrm-bicycle
-  # command: osrm-routed --algorithm mld /data/bangladesh-latest.osrm
-  # volumes:
-  #   - ${VOL_BASE}/vol-osrm-bicycle/data:/data    
-    ports:
-      - "5002:5000"
-    networks:
-      - common
-  osrm-car:
-    container_name: osrm-car
-    build:
-      context: ${DOCKER_FILES_BASE}/osrm-car
-  # command: osrm-routed --algorithm mld /data/bangladesh-latest.osrm
-    # volumes:
-    #   - ${VOL_BASE}/vol-osrm-car/data:/data
-    ports:
-      - "5003:5000"
-    networks:
-      - common    
-
-  overpass_api:
-    container_name: overpass_api
-    image: wiktorn/overpass-api
-    environment:
-      - OVERPASS_META=yes
-      - OVERPASS_MODE=init
-      - OVERPASS_PLANET_URL=https://download.geofabrik.de/asia/bangladesh-latest.osm.bz2
-      - OVERPASS_RATE_LIMIT=1000
-    volumes:
-      - ${VOL_BASE}/vol-overpass/:/db
-    ports:
-      - "12345:80"
-    restart: always
-
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    ports:
-      - '0.0.0.0:8085:80'
-    deploy:
-      resources:
-        limits:
-          memory: 250M
-          cpus: '1.0'    
-    volumes:
-      - ${VOL_BASE}/vol-pgadmin:/var/lib/pgadmin    
-    networks:
-      - common
-
-  postgres-16-custom:
-    build:
-      context: ${DOCKER_FILES_BASE}/postgres
-      dockerfile: postgres-16-w-gis-extensions.Dockerfile
-    container_name: postgres-16-custom
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
     restart: unless-stopped
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 5000
+    ports:
+      - "1025:1025"   # SMTP — Laravel: MAIL_HOST=mailpit MAIL_PORT=1025 (in-network)
+      - "8125:8025"   # web UI → http://localhost:8125
+                      # (host 8025 is already inside the workstation's WS_PORTS_A range)
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ${VOL_BASE}/vol-mailpit:/data
+    networks:
+      - common
+
+  mysql-5:
+    image: mysql:5.7
+    container_name: mysql-5
+    restart: unless-stopped
+    environment:
+      MYSQL_USER: ${DB_MYSQL_USERNAME-dev_user}
+      MYSQL_PASSWORD: ${DB_MYSQL_PASSWORD-dev_password}
+      MYSQL_ROOT_PASSWORD: ${DB_MYSQL_ROOT_PASSWORD-dev_root_password}
+      MYSQL_DATABASE: ${DB_MYSQL_DATABASE-app}
+    ports:
+      - "3307:3306"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    volumes:
+      - ${VOL_BASE}/vol-mysql-5/data:/var/lib/mysql
+    networks:
+      - common
+
+  mysql-8:
+    image: mysql:8
+    container_name: mysql-8
+    restart: unless-stopped
+    environment:
+      MYSQL_USER: ${DB_MYSQL_USERNAME-dev_user}
+      MYSQL_PASSWORD: ${DB_MYSQL_PASSWORD-dev_password}
+      MYSQL_ROOT_PASSWORD: ${DB_MYSQL_ROOT_PASSWORD-dev_root_password}
+      MYSQL_DATABASE: ${DB_MYSQL_DATABASE-app}
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    volumes:
+      - ${VOL_BASE}/vol-mysql-8/data:/var/lib/mysql
+    networks:
+      - common
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOSTS: "mysql-8,mysql-5"
+      PMA_VERBOSES: "MySQL 8,MySQL 5"
+      UPLOAD_LIMIT: 128M
+    ports:
+      - "8880:80"
+    depends_on:
+      - mysql-8
+      - mysql-5
+    networks:
+      - common
+
+  postgres-16:
+    image: postgres:16
+    container_name: postgres-16
+    restart: unless-stopped
+    # default max_connections=100 is too low once Octane workers × instances
+    # stack up in load tests; app-side pooling still applies.
+    command: -c max_connections=200
     environment:
       POSTGRES_USER: ${DB_POSTGRES_USERNAME-admin}
       POSTGRES_PASSWORD: ${DB_POSTGRES_PASSWORD-admin}
       # POSTGRES_DB: ${DB_POSTGRES_DATABASE}
     ports:
       - '0.0.0.0:5433:5432'
-    deploy:
-      resources:
-        limits:
-          memory: 500M
-          cpus: '1.0'    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     volumes:
       - ${VOL_BASE}/vol-postgres-16:/var/lib/postgresql/data
     networks:
@@ -208,19 +130,60 @@ services:
     image: redis:7
     container_name: redis-7
     restart: always
+    # maxmemory deliberately BELOW the container limit: Redis errors loudly
+    # instead of getting silently OOM-killed by the cgroup.
+    # noeviction: evicting a queue job or Cache::lock key is a correctness
+    # bug, not a cache miss — writes should fail visibly at the ceiling.
+    command: redis-server --appendonly yes --maxmemory 400mb --maxmemory-policy noeviction
     ports:
       - 6379:6379
     deploy:
       resources:
         limits:
-          memory: 20M
+          memory: 512M
           cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     volumes:
       - ${VOL_BASE}/vol-redis-7:/data
     networks:
       - common
-        
-    
+
+  workstation:
+    build:
+      context: ${DOCKER_FILES_BASE}/workstation
+      args:
+        USER_UID: ${USER_UID-1000}
+        USER_GID: ${USER_GID-1000}
+        PHP_VERSIONS: ${PHP_VERSIONS-7.2 7.4 8.0 8.1 8.2 8.3 8.4}
+    container_name: workstation
+    hostname: workstation
+    init: true
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    # thundering-herd load tests exhaust the default 1024 fds fast
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    working_dir: /projects
+    environment:
+      PHP_DEFAULT: ${PHP_DEFAULT-8.3}
+    volumes:
+      - ${PROJECTS_BASE-./projects}:/projects
+      - ${VOL_BASE}/vol-workstation/home:/home/dev
+      - ${VOL_BASE}/vol-workstation/mise:/opt/mise
+      - ${VOL_BASE}/vol-workstation/caches:/opt/caches
+    ports:
+      - "${WS_PORTS_A-8000-8099}:${WS_PORTS_A-8000-8099}"
+      - "${WS_PORTS_B-3000-3010}:${WS_PORTS_B-3000-3010}"
+      - "${WS_PORTS_C-5173-5180}:${WS_PORTS_C-5173-5180}"
+    networks:
+      - common
 
 networks:
   common:
