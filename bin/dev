@@ -9,41 +9,109 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SVC=workstation
+SVC="workstation"
 
-env_get() { grep -E "^$1=" "$ROOT/.env" 2>/dev/null | tail -1 | cut -d= -f2- ; }
+env_get() {
+  grep -E "^$1=" "$ROOT/.env" 2>/dev/null |
+    tail -1 |
+    cut -d= -f2-
+}
 
-VOL_BASE="$(env_get VOL_BASE)";           VOL_BASE="${VOL_BASE:-./volumes}"
-PROJECTS_BASE="$(env_get PROJECTS_BASE)"; PROJECTS_BASE="${PROJECTS_BASE:-./projects}"
+VOL_BASE="$(env_get VOL_BASE)"
+VOL_BASE="${VOL_BASE:-./volumes}"
 
-abspath() { case "$1" in /*) echo "$1" ;; *) echo "$ROOT/${1#./}" ;; esac; }
+PROJECTS_BASE="$(env_get PROJECTS_BASE)"
+PROJECTS_BASE="${PROJECTS_BASE:-./projects}"
+
+abspath() {
+  case "$1" in
+    /*) echo "$1" ;;
+    *)  echo "$ROOT/${1#./}" ;;
+  esac
+}
+
 VOL_DIR="$(abspath "$VOL_BASE")"
 PROJ_DIR="$(abspath "$PROJECTS_BASE")"
 
-# pre-create bind-mount dirs so docker doesn't create them as root
-mkdir -p "$PROJ_DIR" "$VOL_DIR/vol-workstation/home" \
-         "$VOL_DIR/vol-workstation/mise" "$VOL_DIR/vol-workstation/caches"
+# Pre-create bind-mount directories so Docker does not create them as root.
+mkdir -p \
+  "$PROJ_DIR" \
+  "$VOL_DIR/vol-workstation/home" \
+  "$VOL_DIR/vol-workstation/mise" \
+  "$VOL_DIR/vol-workstation/caches"
 
-dc() { docker compose --project-directory "$ROOT" "$@"; }
+dc() {
+  docker compose --project-directory "$ROOT" "$@"
+}
 
-running() { dc ps --status running --services 2>/dev/null | grep -qx "$SVC"; }
-ensure_up() { running || { echo "▸ starting $SVC ..."; dc up -d "$SVC"; }; }
+dc_exec() {
+  exec docker compose --project-directory "$ROOT" "$@"
+}
 
-# map host cwd → container path (so `dev` inside a project lands you there)
+running() {
+  dc ps --status running --services 2>/dev/null |
+    grep -qx "$SVC"
+}
+
+ensure_up() {
+  running || {
+    echo "▸ starting $SVC ..."
+    dc up -d "$SVC"
+  }
+}
+
+# Map host cwd to the corresponding container path.
 target_dir() {
   case "$PWD/" in
-    "$PROJ_DIR"/*) echo "/projects${PWD#$PROJ_DIR}" ;;
-    *)             echo "/projects" ;;
+    "$PROJ_DIR"/*)
+      echo "/projects${PWD#$PROJ_DIR}"
+      ;;
+    *)
+      echo "/projects"
+      ;;
   esac
 }
 
 case "${1:-}" in
-  up)       ensure_up ;;
-  down)     dc stop "$SVC" ;;
-  restart)  dc restart "$SVC" ;;
-  rebuild)  dc up -d --build "$SVC" ;;
-  logs)     dc logs -f "$SVC" ;;
-  ps|status) dc ps "$SVC" ;;
-  "")       ensure_up; exec dc exec -u dev -w "$(target_dir)" "$SVC" bash -l ;;
-  *)        ensure_up; exec dc exec -u dev -w "$(target_dir)" "$SVC" bash -lc "$*" ;;
+  up)
+    ensure_up
+    ;;
+
+  down)
+    dc stop "$SVC"
+    ;;
+
+  restart)
+    dc restart "$SVC"
+    ;;
+
+  rebuild)
+    dc up -d --build "$SVC"
+    ;;
+
+  logs)
+    dc logs -f "$SVC"
+    ;;
+
+  ps|status)
+    dc ps "$SVC"
+    ;;
+
+  "")
+    ensure_up
+    dc_exec exec \
+      -u dev \
+      -w "$(target_dir)" \
+      "$SVC" \
+      bash -l
+    ;;
+
+  *)
+    ensure_up
+    dc_exec exec \
+      -u dev \
+      -w "$(target_dir)" \
+      "$SVC" \
+      bash -lc "$*"
+    ;;
 esac
