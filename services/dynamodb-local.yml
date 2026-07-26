@@ -1,0 +1,19 @@
+dynamodb-local:
+  image: amazon/dynamodb-local:latest
+  container_name: dynamodb-local
+  restart: unless-stopped
+  # -sharedDb is not optional: without it DynamoDB Local keys the db file by
+  # access-key + region, so your seed script and your app see different tables.
+  command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
+  working_dir: /home/dynamodblocal
+  ports:
+    - "18000:8000"
+  deploy:
+    resources:
+      limits:
+        memory: 1G      # JVM — 512M like the others is too tight
+        cpus: '1.0'
+  volumes:
+    - ${VOL_BASE}/vol-dynamodb-local/data:/home/dynamodblocal/data
+  networks:
+    - common
