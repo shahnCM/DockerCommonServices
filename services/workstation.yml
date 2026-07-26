@@ -18,7 +18,14 @@ workstation:
       hard: 262144
   working_dir: /projects
   environment:
+    PATH: /home/dev/.local/bin:/opt/mise/shims:/opt/caches/gopath/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    MISE_DATA_DIR: /opt/mise
+    npm_config_cache: /opt/caches/npm
     PHP_DEFAULT: ${PHP_DEFAULT-8.3}
+    AWS_ENDPOINT_URL_DYNAMODB: http://dynamodb-local:8000
+    AWS_REGION: ${AWS_REGION-us-east-1}
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID-test}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY-test}
   volumes:
     - ${PROJECTS_BASE-./projects}:/projects
     - ${VOL_BASE}/vol-workstation/home:/home/dev

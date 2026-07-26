@@ -35,11 +35,17 @@ VOL_DIR="$(abspath "$VOL_BASE")"
 PROJ_DIR="$(abspath "$PROJECTS_BASE")"
 
 # Pre-create bind-mount directories so Docker does not create them as root.
+#
+# vol-dynamodb-local/data matters more than the rest: DynamoDB Local runs as
+# the `dynamodblocal` user, and if the directory arrives owned by root the JVM
+# dies with an opaque SQLite "database file could not be opened" error rather
+# than a permissions message. Creating it as you, up front, avoids that.
 mkdir -p \
   "$PROJ_DIR" \
   "$VOL_DIR/vol-workstation/home" \
   "$VOL_DIR/vol-workstation/mise" \
-  "$VOL_DIR/vol-workstation/caches"
+  "$VOL_DIR/vol-workstation/caches" \
+  "$VOL_DIR/vol-dynamodb-local/data"
 
 dc() {
   docker compose --project-directory "$ROOT" "$@"
