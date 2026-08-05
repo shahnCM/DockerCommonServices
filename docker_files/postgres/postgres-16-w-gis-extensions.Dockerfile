@@ -8,6 +8,7 @@ RUN apt-get update \
         postgresql-16-postgis-3 \
         postgresql-16-cron \
         postgresql-16-partman \
+        postgresql-16-pgvector \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

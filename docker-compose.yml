@@ -105,7 +105,10 @@ services:
       - common
 
   postgres-16:
-    image: postgres:16
+    build:
+      context: ${DOCKER_FILES_BASE}/postgres
+      dockerfile: postgres-16-w-gis-extensions.Dockerfile
+    image: dcs/postgres-16-gis:latest
     container_name: postgres-16
     restart: unless-stopped
     # default max_connections=100 is too low once Octane workers × instances
