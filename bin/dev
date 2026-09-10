@@ -16,6 +16,7 @@
 #   dev disable <svc...>   remove from COMPOSE_PROFILES and stop
 #   dev rebuild            rebuild the workstation image (after editing docker_files/workstation)
 #   dev lazy               lazydocker — on the host if installed, else inside the workstation
+#   dev projects [path]    show / set the folder mounted as /projects (PROJECTS_BASE in .env)
 #   dev vscode [--force]   (re)install the VS Code attach config for this container
 #   dev vscode-server      pre-install the VS Code Server (when VS Code's own download hangs)
 set -euo pipefail
@@ -31,7 +32,7 @@ dcA() { docker compose --profile '*' "$@"; }   # every service, enabled or not
 die()  { echo "dev: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required — $2"; }
 
-usage() { sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 # ---- the resolved model: absolute paths, defaults applied, as Compose sees it
 _model=""
@@ -75,6 +76,32 @@ profiles_set() {
   fi
 }
 known_profile() { dcA config --profiles 2>/dev/null | grep -qx "$1"; }
+
+env_set() {   # env_set KEY value  — replace or append KEY in .env, keeping the inline comment
+  local key="$1" val="$2" comment
+  comment="$(grep -E "^$key=" .env 2>/dev/null | tail -1 | sed -nE 's/^[^#]*(#.*)$/   \1/p')"
+  if grep -qE "^$key=" .env; then
+    sed -i.bak -E "s|^$key=.*|$key=$val$comment|" .env && rm -f .env.bak
+  else
+    printf '%s=%s\n' "$key" "$val" >> .env
+  fi
+}
+
+# Where your code lives. Absolute, relative to the repo, or ${HOME}/... — mounted at /projects.
+projects_cmd() {
+  if [ -z "${1:-}" ]; then
+    echo "PROJECTS_BASE=$(grep -E '^PROJECTS_BASE=' .env | cut -d= -f2- | sed 's/[[:space:]]*#.*//')"
+    echo "→ $(proj_dir)   (mounted at /projects)"; return
+  fi
+  local raw="$1" abs
+  raw="${raw/#\~/\${HOME\}}"                           # ~/code → ${HOME}/code, portable across machines
+  abs="${raw/\$\{HOME\}/$HOME}"; case "$abs" in /*) ;; *) abs="$ROOT/${abs#./}" ;; esac
+  mkdir -p "$abs"
+  if [ "$(proj_dir)" = "${abs%/}" ]; then echo "• already: $abs"; return; fi
+  env_set PROJECTS_BASE "$raw"; _model=""
+  echo "✔ PROJECTS_BASE=$raw  →  $abs is now /projects"
+  if running; then echo "▸ recreating $SVC with the new mount (re-attach VS Code afterwards) …"; dc up -d "$SVC"; fi
+}
 
 list() {
   local enabled=",$(profiles_get),"
@@ -170,6 +197,10 @@ setup() {
       sed -i.bak -E "s/^USER_UID=.*/USER_UID=$(id -u)/; s/^USER_GID=.*/USER_GID=$(id -g)/" .env && rm -f .env.bak
     fi
     echo "✔ .env created  (USER_UID=$(grep -E '^USER_UID=' .env | cut -d= -f2), enabled: $(profiles_get))"
+    if [ -t 0 ]; then
+      read -r -p "   Folder with your projects, mounted as /projects [./projects]: " ans
+      [ -z "$ans" ] || projects_cmd "$ans"
+    fi
   fi
 
   prepare_dirs
@@ -223,6 +254,7 @@ case "${1:-}" in
     if command -v lazydocker >/dev/null 2>&1; then exec lazydocker; fi
     need_env; ensure_up; exec docker compose exec "$SVC" bash -lc lazydocker ;;
 
+  projects)     need_env; shift; projects_cmd "${1:-}" ;;
   vscode)       shift; vscode_install "${1:-}" ;;
   vscode-server) need_env; ensure_up; vscode_server_seed ;;
   code)         need_env; shift; code_open "${1:-}" ;;

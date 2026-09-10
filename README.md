@@ -34,11 +34,13 @@ clone it on a new machine, run one command, keep working.
    bin/dev setup
    echo "export PATH=\"$PWD/bin:\$PATH\"" >> ~/.bashrc && source ~/.bashrc   # `dev` from any folder
    ```
-4. Put your code in `projects/` (each project is one folder; clone or copy it there) and work:
+4. Your code lives in one folder, mounted as `/projects` inside. Default: `projects/` in this repo;
+   setup asks, and you can change it anytime with `dev projects ~/code` (`PROJECTS_BASE` in `.env`).
+   Each project is one sub-folder. Then:
    ```bash
    git clone git@github.com:you/my-app.git projects/my-app
    cd projects/my-app && dev        # a shell inside the workstation, in that folder
-   dev code my-app                  # VS Code attached (Claude Code, ESLint, Prettier, PHP, Go, Python ready)
+   dev code .                       # VS Code attached (Claude Code, ESLint, Prettier, PHP, Go, Python ready)
    dev list                         # which services exist / are enabled / are running
    ```
 
@@ -51,7 +53,8 @@ Node, Go, Java and Chromium download in the background on the very first start (
 |---|---|
 | shell in the workstation, in the project you're standing in | `cd projects/my-app && dev` |
 | run one command inside | `dev php7.4 -v` · `dev composer install` · `dev npm run dev -- --host` |
-| VS Code on a project (a new window each time) | `dev code my-app` |
+| VS Code on a project (a new window each time) | `dev code .` · `dev code my-app` |
+| where my code lives (mounted as `/projects`) | `dev projects` · `dev projects ~/code` |
 | start / stop what's enabled | `dev up` · `dev down` |
 | start something just this once | `dev up postgres-16` |
 | enable / disable permanently | `dev enable postgres-16` · `dev disable mysql-5` |
