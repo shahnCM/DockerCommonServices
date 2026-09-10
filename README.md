@@ -32,13 +32,14 @@ clone it on a new machine, run one command, keep working.
    config, builds the workstation image and starts the enabled services (first build: 10–20 min):
    ```bash
    bin/dev setup
-   echo 'export PATH="$HOME/workstation/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc   # `dev` from anywhere
+   echo "export PATH=\"$PWD/bin:\$PATH\"" >> ~/.bashrc && source ~/.bashrc   # `dev` from any folder
    ```
-4. Work:
+4. Put your code in `projects/` (each project is one folder; clone or copy it there) and work:
    ```bash
-   dev                 # a shell inside the workstation
-   dev code            # VS Code attached to it (Claude Code, ESLint, Prettier, PHP, Go, Python ready)
-   dev list            # see which services exist / are enabled / are running
+   git clone git@github.com:you/my-app.git projects/my-app
+   cd projects/my-app && dev        # a shell inside the workstation, in that folder
+   dev code my-app                  # VS Code attached (Claude Code, ESLint, Prettier, PHP, Go, Python ready)
+   dev list                         # which services exist / are enabled / are running
    ```
 
 Node, Go, Java and Chromium download in the background on the very first start (a few minutes,
