@@ -1,0 +1,25 @@
+# TimescaleDB on PostgreSQL 16  →  host localhost:5432
+services:
+  postgres-timescale-16:
+    image: timescale/timescaledb:latest-pg16
+    container_name: postgres-timescale-16
+    profiles: [postgres-timescale-16]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_POSTGRES_USERNAME:-admin}
+      POSTGRES_PASSWORD: ${DB_POSTGRES_PASSWORD:-admin}
+      POSTGRES_DB: benchmark
+    ports:
+      - "${BIND_IP:-127.0.0.1}:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+    volumes:
+      - ./volumes/vol-postgres-timescale-16:/var/lib/postgresql/data

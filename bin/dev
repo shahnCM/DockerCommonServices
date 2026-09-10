@@ -1,124 +1,206 @@
 #!/usr/bin/env bash
-# dev — your door into the workstation. Put bin/ on your PATH.
+# dev — the one command for this repo. Put bin/ on your PATH.
 #
-#   dev                  open a shell (maps your current projects/ subdir)
-#   dev php7.2 -v        run any command inside, from where you are
-#   dev up|down|restart  manage the container
-#   dev rebuild          rebuild image (after editing the Dockerfile)
-#   dev logs             container logs (bootstrap progress etc.)
+#   dev setup              first run: .env, folders, VS Code config, build & start
+#   dev                    shell inside the workstation (lands in your current project)
+#   dev <cmd...>           run a command inside, from where you are   e.g. dev php8.1 -v
+#   dev code [project]     VS Code attached to the workstation — run again for more windows
+#
+#   dev up [service...]    start the enabled services (or just the named ones)
+#   dev down [service...]  stop & remove containers, data stays (or just the named ones)
+#   dev restart [svc...]   restart
+#   dev logs [service]     follow logs (default: everything running)
+#   dev ps                 what is running
+#   dev list               every service; enabled and running ones marked
+#   dev enable  <svc...>   add to COMPOSE_PROFILES in .env and start
+#   dev disable <svc...>   remove from COMPOSE_PROFILES and stop
+#   dev rebuild            rebuild the workstation image (after editing docker_files/workstation)
+#   dev lazy               lazydocker — on the host if installed, else inside the workstation
+#   dev vscode [--force]   (re)install the VS Code attach config for this container
 set -euo pipefail
 
+HOST_PWD="$PWD"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SVC="workstation"
+SVC=workstation
+cd "$ROOT"
 
-env_get() {
-  grep -E "^$1=" "$ROOT/.env" 2>/dev/null |
-    tail -1 |
-    cut -d= -f2- |
-    envsubst
+dc()  { docker compose "$@"; }
+dcA() { docker compose --profile '*' "$@"; }   # every service, enabled or not
+
+die()  { echo "dev: $*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required — $2"; }
+
+usage() { sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+
+# ---- the resolved model: absolute paths, defaults applied, as Compose sees it
+_model=""
+model() { [ -n "$_model" ] || _model="$(dcA config 2>/dev/null)"; printf '%s\n' "$_model"; }
+
+# Host folder mounted at /projects (PROJECTS_BASE, resolved)
+proj_dir() { model | awk '$1=="source:"{s=$2} $1=="target:" && $2=="/projects"{print s; exit}'; }
+
+# Create every bind-mount folder as YOU before Docker creates it as root.
+# Containers that run as uid 1000 (dynamodb-local, redis-7-insight, the
+# workstation itself) would otherwise fail on a root-owned, empty folder.
+prepare_dirs() {
+  local d
+  for d in $(model | awk '$1=="source:"{print $2}' | grep -E "^$ROOT/" | sort -u) "$(proj_dir)"; do
+    [ -z "$d" ] || [ -e "$d" ] || mkdir -p "$d"
+  done
 }
 
-VOL_BASE="$(env_get VOL_BASE)"
-VOL_BASE="${VOL_BASE:-./volumes}"
-
-PROJECTS_BASE="$(env_get PROJECTS_BASE)"
-PROJECTS_BASE="${PROJECTS_BASE:-./projects}"
-
-abspath() {
-  case "$1" in
-    /*) echo "$1" ;;
-    *)  echo "$ROOT/${1#./}" ;;
-  esac
-}
-
-VOL_DIR="$(abspath "$VOL_BASE")"
-PROJ_DIR="$(abspath "$PROJECTS_BASE")"
-
-# Pre-create bind-mount directories so Docker does not create them as root.
-#
-# vol-dynamodb-local/data matters more than the rest: DynamoDB Local runs as
-# the `dynamodblocal` user, and if the directory arrives owned by root the JVM
-# dies with an opaque SQLite "database file could not be opened" error rather
-# than a permissions message. Creating it as you, up front, avoids that.
-mkdir -p \
-  "$PROJ_DIR" \
-  "$VOL_DIR/vol-workstation/home" \
-  "$VOL_DIR/vol-workstation/mise" \
-  "$VOL_DIR/vol-workstation/caches" \
-  "$VOL_DIR/vol-dynamodb-local/data"
-
-dc() {
-  docker compose --project-directory "$ROOT" "$@"
-}
-
-dc_exec() {
-  exec docker compose --project-directory "$ROOT" "$@"
-}
-
-running() {
-  dc ps --status running --services 2>/dev/null |
-    grep -qx "$SVC"
-}
-
-ensure_up() {
-  running || {
-    echo "▸ starting $SVC ..."
-    dc up -d "$SVC"
-  }
-}
-
-# Map host cwd to the corresponding container path.
+# Map the host cwd to the matching path inside the container
 target_dir() {
-  case "$PWD/" in
-    "$PROJ_DIR"/*)
-      echo "/projects${PWD#$PROJ_DIR}"
-      ;;
-    *)
-      echo "/projects"
-      ;;
+  local p; p="$(proj_dir)"
+  case "$HOST_PWD/" in
+    "$p"/*) echo "/projects${HOST_PWD#"$p"}" ;;
+    *)      echo "/projects" ;;
   esac
 }
 
+running()   { dc ps --status running --services 2>/dev/null | grep -qx "$SVC"; }
+ensure_up() { running || { echo "▸ starting $SVC …"; prepare_dirs; dc up -d "$SVC"; }; }
+need_env()  { [ -f .env ] || die "no .env yet — run:  dev setup"; }
+
+# ---- COMPOSE_PROFILES in .env -----------------------------------------------
+profiles_get() { grep -E '^COMPOSE_PROFILES=' .env 2>/dev/null | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*//' | tr -d '[:space:]'; }
+profiles_set() {
+  if grep -qE '^COMPOSE_PROFILES=' .env; then
+    sed -i.bak -E "s|^COMPOSE_PROFILES=.*|COMPOSE_PROFILES=$1|" .env && rm -f .env.bak
+  else
+    printf 'COMPOSE_PROFILES=%s\n' "$1" >> .env
+  fi
+}
+known_profile() { dcA config --profiles 2>/dev/null | grep -qx "$1"; }
+
+list() {
+  local enabled=",$(profiles_get),"
+  local up=" $(dcA ps --status running --services 2>/dev/null | tr '\n' ' ') "
+  local p mark state
+  for p in $(dcA config --profiles | sort); do
+    mark="   "; state=""
+    [[ "$enabled" == *",$p,"* ]] && { mark="[x]"; state="enabled"; }
+    [[ "$up" == *" $p "* ]] && state="${state:+$state, }running"
+    printf '  %s %-24s %s\n' "$mark" "$p" "$state"
+  done
+  echo
+  echo "  enable/disable:  dev enable postgres-16    ·    one-off:  dev up postgres-16"
+}
+
+# ---- VS Code ----------------------------------------------------------------
+vscode_cfg_dirs() {
+  local tail="User/globalStorage/ms-vscode-remote.remote-containers/nameConfigs"
+  case "$(uname -s)" in
+    Darwin) echo "$HOME/Library/Application Support/Code/$tail" ;;
+    *)      echo "${XDG_CONFIG_HOME:-$HOME/.config}/Code/$tail"
+            echo "$HOME/.var/app/com.visualstudio.code/config/Code/$tail" ;;   # Flatpak
+  esac
+}
+vscode_install() {
+  local force="${1:-}" dir found=0
+  while IFS= read -r dir; do
+    [ -d "${dir%%/User/*}/User" ] || continue          # VS Code has never run here
+    found=1; mkdir -p "$dir"
+    if [ -f "$dir/$SVC.json" ] && [ "$force" != "--force" ]; then
+      echo "• VS Code attach config already there: $dir/$SVC.json   (dev vscode --force to overwrite)"
+    else
+      cp vscode/attached-container.json "$dir/$SVC.json"
+      echo "✔ VS Code attach config → $dir/$SVC.json"
+    fi
+  done < <(vscode_cfg_dirs)
+  [ "$found" = 1 ] || echo "• VS Code not found on this machine — install it, then run: dev vscode"
+}
+code_open() {
+  need code "install VS Code, then Command Palette → 'Shell Command: Install code command in PATH'"
+  ensure_up
+  if ! code --list-extensions 2>/dev/null | grep -qi '^ms-vscode-remote.remote-containers$'; then
+    echo "▸ installing the Dev Containers extension …"
+    code --install-extension ms-vscode-remote.remote-containers >/dev/null
+  fi
+  local folder
+  if [ -n "${1:-}" ]; then
+    local sub="${1#/}"; sub="${sub#projects/}"; folder="/projects/${sub%/}"
+  else
+    folder="$(target_dir)"
+  fi
+  local hex; hex="$(printf '{"containerName":"/%s"}' "$SVC" | od -An -tx1 | tr -d ' \n')"
+  echo "▸ VS Code → $SVC:$folder"
+  code --folder-uri "vscode-remote://attached-container+${hex}${folder}"
+}
+
+# ---- first run --------------------------------------------------------------
+setup() {
+  need docker "install Docker: https://docs.docker.com/get-docker/"
+  docker compose version >/dev/null 2>&1 || die "Docker Compose v2 is required (docker compose version)"
+  docker info >/dev/null 2>&1 || die "cannot talk to Docker — is the daemon running, and are you in the docker group? (log out/in after: sudo usermod -aG docker \$USER)"
+
+  if [ -f .env ]; then
+    echo "• .env exists, keeping it"
+  else
+    cp .env.example .env
+    if [ "$(uname -s)" != Darwin ]; then    # on macOS Docker maps file ownership for you; keep 1000
+      sed -i.bak -E "s/^USER_UID=.*/USER_UID=$(id -u)/; s/^USER_GID=.*/USER_GID=$(id -g)/" .env && rm -f .env.bak
+    fi
+    echo "✔ .env created  (USER_UID=$(grep -E '^USER_UID=' .env | cut -d= -f2), enabled: $(profiles_get))"
+  fi
+
+  prepare_dirs
+  echo "✔ folders ready: $(proj_dir)  and  volumes/"
+  vscode_install
+  echo "▸ building the workstation image and starting the enabled services (first time: 10–20 min) …"
+  dc up -d --build
+  echo
+  echo "✔ ready.  Next:"
+  echo "     dev           shell in the workstation"
+  echo "     dev code      VS Code attached to it (Claude Code included)"
+  echo "     dev list      services — dev enable <name> / dev disable <name>"
+  echo
+  echo "   make \`dev\` available everywhere:"
+  echo "     echo 'export PATH=\"$ROOT/bin:\$PATH\"' >> ~/.bashrc && source ~/.bashrc"
+}
+
+# ---- dispatch ---------------------------------------------------------------
 case "${1:-}" in
-  up)
-    ensure_up
-    ;;
+  setup)        setup ;;
+  help|-h|--help) usage ;;
 
-  down)
-    dc stop "$SVC"
-    ;;
+  up)           need_env; shift; prepare_dirs; dc up -d "$@" ;;
+  down)         need_env; shift; dcA down "$@" ;;
+  restart)      need_env; shift; dc restart "$@" ;;
+  logs)         need_env; shift; dc logs -f --tail=100 "$@" ;;
+  ps|status)    need_env; dcA ps ;;
+  list)         need_env; list ;;
+  rebuild)      need_env; prepare_dirs; dc build --pull "$SVC" && dc up -d "$SVC" ;;
+  pull)         need_env; dc pull --ignore-buildable ;;
 
-  restart)
-    dc restart "$SVC"
-    ;;
+  enable)
+    need_env; shift; [ $# -gt 0 ] || die "usage: dev enable <service...>"
+    cur="$(profiles_get)"
+    for p in "$@"; do
+      known_profile "$p" || die "unknown service '$p' — see: dev list"
+      [[ ",$cur," == *",$p,"* ]] || cur="${cur:+$cur,}$p"
+    done
+    profiles_set "$cur"; echo "✔ enabled: $cur"
+    prepare_dirs; dc up -d "$@" ;;
 
-  rebuild)
-    dc up -d --build "$SVC"
-    ;;
+  disable)
+    need_env; shift; [ $# -gt 0 ] || die "usage: dev disable <service...>"
+    cur=",$(profiles_get),"
+    for p in "$@"; do cur="${cur//,$p,/,}"; done
+    cur="${cur#,}"; cur="${cur%,}"
+    profiles_set "$cur"; echo "✔ enabled: ${cur:-<none>}"
+    dcA down "$@" ;;
 
-  logs)
-    dc logs -f "$SVC"
-    ;;
+  lazy)
+    if command -v lazydocker >/dev/null 2>&1; then exec lazydocker; fi
+    need_env; ensure_up; exec docker compose exec "$SVC" bash -lc lazydocker ;;
 
-  ps|status)
-    dc ps "$SVC"
-    ;;
+  vscode)       shift; vscode_install "${1:-}" ;;
+  code)         need_env; shift; code_open "${1:-}" ;;
 
-  "")
-    ensure_up
-    dc_exec exec \
-      -u dev \
-      -w "$(target_dir)" \
-      "$SVC" \
-      bash -l
-    ;;
-
-  *)
-    ensure_up
-    dc_exec exec \
-      -u dev \
-      -w "$(target_dir)" \
-      "$SVC" \
-      bash -lc "$*"
-    ;;
+  "")           need_env; ensure_up; exec docker compose exec -w "$(target_dir)" "$SVC" bash -l ;;
+  *)            need_env; ensure_up
+                if [ $# -eq 1 ]; then exec docker compose exec -w "$(target_dir)" "$SVC" bash -lc "$1"
+                else                  exec docker compose exec -w "$(target_dir)" "$SVC" bash -lc 'exec "$@"' bash "$@"
+                fi ;;
 esac

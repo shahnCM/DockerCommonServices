@@ -1,0 +1,27 @@
+# RabbitMQ 4 + management UI  →  AMQP localhost:5672 · UI http://localhost:15672 (rabbit/rabbit)
+services:
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: rabbitmq
+    profiles: [rabbitmq]
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-rabbit}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-rabbit}
+      RABBITMQ_DEFAULT_VHOST: vhost
+    ports:
+      - "${BIND_IP:-127.0.0.1}:5672:5672"
+      - "${BIND_IP:-127.0.0.1}:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    volumes:
+      - ./volumes/vol-rabbitmq:/var/lib/rabbitmq

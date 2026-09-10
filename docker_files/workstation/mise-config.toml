@@ -11,6 +11,7 @@ go = "latest"
 java = "temurin-21"
 maven = "latest"
 gradle = "latest"
+lazydocker = "latest"   # `lazydocker` inside the workstation watches every container
 
 [settings]
 experimental = true

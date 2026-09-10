@@ -1,0 +1,11 @@
+# Adminer (one-page DB GUI for any of the databases)  →  http://localhost:8321
+services:
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    profiles: [adminer]
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql-8
+    ports:
+      - "${BIND_IP:-127.0.0.1}:8321:8080"

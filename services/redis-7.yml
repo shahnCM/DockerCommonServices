@@ -1,25 +1,26 @@
-redis-7:
-  image: redis:7
-  container_name: redis-7
-  restart: always
-  # maxmemory deliberately BELOW the container limit: Redis errors loudly
-  # instead of getting silently OOM-killed by the cgroup.
-  # noeviction: evicting a queue job or Cache::lock key is a correctness
-  # bug, not a cache miss — writes should fail visibly at the ceiling.
-  command: redis-server --appendonly yes --maxmemory 400mb --maxmemory-policy noeviction
-  ports:
-    - 6379:6379
-  deploy:
-    resources:
-      limits:
-        memory: 512M
-        cpus: '1.0'
-  healthcheck:
-    test: ["CMD", "redis-cli", "ping"]
-    interval: 5s
-    timeout: 3s
-    retries: 5
-  volumes:
-    - ${VOL_BASE}/vol-redis-7:/data
-  networks:
-    - common
+# Redis 7  →  host localhost:6379   (in-network: redis-7:6379, no password)
+services:
+  redis-7:
+    image: redis:7
+    container_name: redis-7
+    profiles: [redis-7]
+    restart: unless-stopped
+    # maxmemory deliberately BELOW the container limit: Redis errors loudly
+    # instead of getting silently OOM-killed by the cgroup.
+    # noeviction: evicting a queue job or Cache::lock key is a correctness
+    # bug, not a cache miss — writes should fail visibly at the ceiling.
+    command: redis-server --appendonly yes --maxmemory 400mb --maxmemory-policy noeviction
+    ports:
+      - "${BIND_IP:-127.0.0.1}:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    volumes:
+      - ./volumes/vol-redis-7:/data

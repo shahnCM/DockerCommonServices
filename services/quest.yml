@@ -1,0 +1,19 @@
+# QuestDB  →  UI http://localhost:9000 · ILP 9009 · PostgreSQL wire localhost:8812
+# If it refuses to start: sudo sysctl -w vm.max_map_count=1048576
+services:
+  quest:
+    image: questdb/questdb:latest
+    container_name: quest
+    profiles: [quest]
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:9000:9000"
+      - "${BIND_IP:-127.0.0.1}:9009:9009"
+      - "${BIND_IP:-127.0.0.1}:8812:8812"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    volumes:
+      - ./volumes/vol-quest:/var/lib/questdb

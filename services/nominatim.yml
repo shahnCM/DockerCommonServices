@@ -1,0 +1,20 @@
+# Nominatim geocoder (OpenStreetMap)  →  http://localhost:8183
+# Needs a .osm.pbf at volumes/vol-nominatim/files/ (see docker_files/nominatim). First import takes long.
+services:
+  nominatim:
+    build:
+      context: ./docker_files/nominatim
+    image: nominatim:local
+    container_name: nominatim
+    profiles: [nominatim]
+    environment:
+      PBF_PATH: /nominatim/files/bangladesh-latest.osm.pbf
+      NOMINATIM_PASSWORD: postgres
+    ports:
+      - "${BIND_IP:-127.0.0.1}:8183:8080"
+    volumes:
+      - ./volumes/vol-nominatim/files:/nominatim/files
+      - ./volumes/vol-nominatim/data:/nominatim/data
+      - ./volumes/vol-nominatim/postgres_data:/var/lib/postgresql/12/main
+      - ./volumes/vol-nominatim/settings:/nominatim/settings
+      - ./volumes/vol-nominatim/tmp:/tmp/nominatim-tmp

@@ -1,39 +1,43 @@
-workstation:
-  build:
-    context: ${DOCKER_FILES_BASE}/workstation
-    args:
-      USER_UID: ${USER_UID-1000}
-      USER_GID: ${USER_GID-1000}
-      PHP_VERSIONS: ${PHP_VERSIONS-7.2 7.4 8.0 8.1 8.2 8.3 8.4}
-  container_name: workstation
-  hostname: workstation
-  init: true
-  tty: true
-  stdin_open: true
-  restart: unless-stopped
-  # thundering-herd load tests exhaust the default 1024 fds fast
-  ulimits:
-    nofile:
-      soft: 262144
-      hard: 262144
-  working_dir: /projects
-  environment:
-    PATH: /home/dev/.local/bin:/opt/mise/shims:/opt/caches/gopath/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-    MISE_DATA_DIR: /opt/mise
-    npm_config_cache: /opt/caches/npm
-    PHP_DEFAULT: ${PHP_DEFAULT-8.3}
-    AWS_ENDPOINT_URL_DYNAMODB: http://dynamodb-local:8000
-    AWS_REGION: ${AWS_REGION-us-east-1}
-    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID-test}
-    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY-test}
-  volumes:
-    - ${PROJECTS_BASE-./projects}:/projects
-    - ${VOL_BASE}/vol-workstation/home:/home/dev
-    - ${VOL_BASE}/vol-workstation/mise:/opt/mise
-    - ${VOL_BASE}/vol-workstation/caches:/opt/caches
-  ports:
-    - "${WS_PORTS_A-8000-8099}:${WS_PORTS_A-8000-8099}"
-    - "${WS_PORTS_B-3000-3010}:${WS_PORTS_B-3000-3010}"
-    - "${WS_PORTS_C-5173-5180}:${WS_PORTS_C-5173-5180}"
-  networks:
-    - common
+# The machine: PHP 7.2→8.4, node/go/java via mise, FrankenPHP, headless Chromium,
+# Docker CLI, Claude Code. Enter with `dev`, attach VS Code with `dev code`.
+services:
+  workstation:
+    build:
+      context: ./docker_files/workstation
+      args:
+        USER_UID: ${USER_UID:-1000}
+        USER_GID: ${USER_GID:-1000}
+        PHP_VERSIONS: ${PHP_VERSIONS:-7.2 7.4 8.0 8.1 8.2 8.3 8.4}
+    image: workstation:local
+    container_name: workstation
+    hostname: workstation
+    profiles: [workstation]
+    init: true
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    # thundering-herd load tests exhaust the default 1024 fds fast
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      PHP_DEFAULT: ${PHP_DEFAULT:-8.3}
+      # AWS SDKs read this natively → no local-vs-prod branching in app code
+      AWS_ENDPOINT_URL_DYNAMODB: http://dynamodb-local:8000
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+    volumes:
+      - ${PROJECTS_BASE:-./projects}:/projects
+      - ./volumes/vol-workstation/home:/home/dev        # dotfiles, ~/.claude, ~/.vscode-server
+      - ./volumes/vol-workstation/mise:/opt/mise        # node/go/java/lazydocker installs
+      - ./volumes/vol-workstation/caches:/opt/caches    # composer/npm/go/m2/gradle/chromium
+      # host Docker daemon → `docker`, `docker compose`, `lazydocker` work inside.
+      # (Full control of the host's Docker — fine for a personal dev box.)
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      # anything you serve on these ports inside is reachable at localhost:<port>
+      - "${BIND_IP:-127.0.0.1}:${WS_PORTS_A:-8000-8099}:${WS_PORTS_A:-8000-8099}"
+      - "${BIND_IP:-127.0.0.1}:${WS_PORTS_B:-3000-3010}:${WS_PORTS_B:-3000-3010}"
+      - "${BIND_IP:-127.0.0.1}:${WS_PORTS_C:-5173-5180}:${WS_PORTS_C:-5173-5180}"

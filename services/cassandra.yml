@@ -1,0 +1,24 @@
+# Cassandra 5  →  host localhost:9044 (CQL)
+services:
+  cassandra:
+    image: cassandra:5
+    container_name: cassandra
+    profiles: [cassandra]
+    restart: unless-stopped
+    environment:
+      CASSANDRA_CLUSTER_NAME: cassandra-main
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_DC: dc-main
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 200M
+    ports:
+      - "${BIND_IP:-127.0.0.1}:9044:9042"
+    cap_add:
+      - SYS_NICE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    volumes:
+      - ./volumes/vol-cassandra/data:/var/lib/cassandra

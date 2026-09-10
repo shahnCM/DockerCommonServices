@@ -1,0 +1,57 @@
+# Portable workstation — one Compose project, one file per service.
+#
+#   Which services run   →  COMPOSE_PROFILES in .env      (dev enable / dev disable <name>)
+#   Start one-off        →  docker compose up -d <name>   (any service listed below)
+#   Touch everything     →  docker compose --profile '*' <cmd>
+#
+# Every services/<name>.yml is a plain, standalone Compose file carrying
+# `profiles: [<name>]`. Nothing is renamed or generated: to add a service,
+# create the file and list it here.
+name: workstation
+
+include:
+  - path:
+      # ---- the machine ---------------------------------------
+      - services/workstation.yml
+      # ---- databases -----------------------------------------
+      - services/mysql-8.yml
+      - services/mysql-5.yml
+      - services/mariadb-10.yml
+      - services/postgres-16.yml
+      - services/postgres-timescale-16.yml
+      - services/mongodb-7.yml
+      - services/ms-sql.yml
+      - services/cassandra.yml
+      - services/scylla.yml
+      - services/scylla-manager.yml
+      - services/cratedb.yml
+      - services/quest.yml
+      - services/influx.yml
+      - services/dynamodb-local.yml
+      # ---- cache / queue / search ----------------------------
+      - services/redis-7.yml
+      - services/rabbitmq.yml
+      - services/kafka.yml
+      - services/elasticsearch.yml
+      - services/kibana.yml
+      - services/meilisearch.yml
+      # ---- admin UIs & tools ---------------------------------
+      - services/phpmyadmin.yml
+      - services/adminer.yml
+      - services/pgadmin.yml
+      - services/redis-7-insight.yml
+      - services/mongodb-7-express.yml
+      - services/grafana.yml
+      - services/grpcui.yml
+      - services/mailpit.yml
+      - services/awslocalstack.yml
+      # ---- maps (OpenStreetMap stack, needs a .osm.pbf) ------
+      - services/nominatim.yml
+      - services/osrms.yml
+      - services/osm-tile-server.yml
+      - services/overpass.yml
+    project_directory: .
+
+networks:
+  default:
+    name: common   # every service joins it; reach others by service name (mysql-8, redis-7 …)

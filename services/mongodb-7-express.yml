@@ -1,0 +1,19 @@
+# Mongo Express (GUI for mongodb-7)  →  http://localhost:8181
+services:
+  mongodb-7-express:
+    image: mongo-express:latest
+    container_name: mongodb-7-express
+    profiles: [mongodb-7-express]
+    restart: unless-stopped
+    depends_on:
+      - mongodb-7
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME:-admin}:${MONGO_INITDB_ROOT_PASSWORD:-admin}@mongodb-7:27017/
+      ME_CONFIG_BASICAUTH: "false"   # bound to 127.0.0.1 anyway
+    ports:
+      - "${BIND_IP:-127.0.0.1}:8181:8081"
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+          cpus: '0.5'

@@ -1,0 +1,15 @@
+# Scylla Manager (uses the `scylla` node as its own store)  →  http://localhost:5080
+services:
+  scylla-manager:
+    image: scylladb/scylla-manager:latest
+    container_name: scylla-manager
+    profiles: [scylla-manager]
+    restart: unless-stopped
+    depends_on:
+      - scylla
+    environment:
+      SCYLLA_MANAGER_LISTEN_ADDRESS: 0.0.0.0
+      SCYLLA_MANAGER_DB_HOST: scylla
+    ports:
+      - "${BIND_IP:-127.0.0.1}:5080:5080"
+      - "${BIND_IP:-127.0.0.1}:5090:5090"

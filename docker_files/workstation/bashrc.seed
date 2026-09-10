@@ -8,7 +8,7 @@ command -v mise >/dev/null && eval "$(mise activate bash)"
 PS1='\[\e[1;36m\]⬢ ws\[\e[0m\] \[\e[1;34m\]\w\[\e[0m\] \$ '
 
 if [ -f /opt/mise/.bootstrapping ]; then
-  echo "⏳ node/go/java still installing (one-time) — tail -f /opt/caches/bootstrap.log"
+  echo "⏳ node/go/java/chromium still installing (one-time) — tail -f /opt/caches/bootstrap.log"
 fi
 
 alias ll='ls -alF'

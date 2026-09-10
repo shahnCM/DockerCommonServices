@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose config:*)",
+      "Bash(docker compose --profile * config:*)",
+      "Bash(docker compose ps:*)",
+      "Bash(docker compose --profile * ps:*)",
+      "Bash(docker compose logs:*)",
+      "Bash(docker manifest inspect:*)",
+      "Bash(docker image inspect:*)",
+      "Bash(docker ps:*)",
+      "Bash(bin/dev list)",
+      "Bash(bin/dev ps)",
+      "Bash(bash -n:*)"
+    ]
+  }
+}

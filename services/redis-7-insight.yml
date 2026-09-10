@@ -1,18 +1,17 @@
-redis-7-insight:
-  image: redislabs/redisinsight:latest
-  container_name: redis-7-insight
-  restart: always
-  ports:
-    - 5540:5540
-  depends_on:
-    - redis-7
-  deploy:
-    resources:
-      limits:
-        memory: 150M
-        cpus: '0.5'
-  volumes:
-    - ${VOL_BASE}/vol-redis-7-insight:/data
-  networks:
-    - common  
-    
+# Redis Insight (GUI)  →  http://localhost:5540   → add database host `redis-7`, port 6379
+# Runs as uid 1000 and writes /data — `dev` pre-creates the folder as you.
+services:
+  redis-7-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-7-insight
+    profiles: [redis-7-insight]
+    restart: unless-stopped
+    ports:
+      - "${BIND_IP:-127.0.0.1}:5540:5540"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    volumes:
+      - ./volumes/vol-redis-7-insight:/data

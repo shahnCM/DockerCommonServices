@@ -1,0 +1,23 @@
+# SQL Server 2022 Developer  →  host localhost:9433   (user sa)
+# Runs as your uid so the bind-mounted data dir is writable (supported by the image).
+services:
+  ms-sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    container_name: ms-sql
+    profiles: [ms-sql]
+    restart: unless-stopped
+    user: "${USER_UID:-1000}:${USER_GID:-1000}"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-Password123456!}
+    ports:
+      - "${BIND_IP:-127.0.0.1}:9433:1433"
+    deploy:
+      resources:
+        limits:
+          memory: 2G          # SQL Server refuses to start below ~2 GB
+          cpus: '2.0'
+    volumes:
+      - ./volumes/vol-ms-sql/data:/var/opt/mssql

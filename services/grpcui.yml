@@ -1,0 +1,12 @@
+# grpcui — web UI for a gRPC server you run inside the workstation  →  http://localhost:8480
+# It connects at start-up, so start your gRPC server first:
+#   GRPCUI_TARGET=workstation:50051 docker compose up -d grpcui
+services:
+  grpcui:
+    image: fullstorydev/grpcui:latest
+    container_name: grpcui
+    profiles: [grpcui]
+    restart: unless-stopped
+    command: ["-plaintext", "-bind", "0.0.0.0", "-port", "8080", "${GRPCUI_TARGET:-workstation:50051}"]
+    ports:
+      - "${BIND_IP:-127.0.0.1}:8480:8080"

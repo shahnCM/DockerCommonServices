@@ -1,0 +1,22 @@
+# ScyllaDB (single node, laptop-friendly flags)  →  host localhost:9043 (CQL)
+services:
+  scylla:
+    image: scylladb/scylla:latest
+    container_name: scylla
+    profiles: [scylla]
+    restart: unless-stopped
+    environment:
+      SCYLLA_CLUSTER_NAME: scylla
+    command: --smp 2 --memory 2G --overprovisioned 1 --developer-mode 1
+    ports:
+      - "${BIND_IP:-127.0.0.1}:9043:9042"
+      - "${BIND_IP:-127.0.0.1}:10000:10000"   # REST API
+    cap_add:
+      - SYS_NICE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+    volumes:
+      - ./volumes/vol-scylla/data:/var/lib/scylla

@@ -1,0 +1,27 @@
+# pgAdmin 4  →  http://localhost:5050   (login: .env PGADMIN_*; add server host `postgres-16`, user admin)
+# The image only works as its own uid 5050 and can't be re-mapped, so this is the one service
+# using a Docker-managed volume (Docker sets the ownership) instead of a folder under volumes/.
+#   inspect: docker volume inspect workstation_pgadmin-data
+services:
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    profiles: [pgadmin]
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${BIND_IP:-127.0.0.1}:5050:80"
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+          cpus: '1.0'
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+volumes:
+  pgadmin-data:

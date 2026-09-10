@@ -1,0 +1,20 @@
+# CrateDB  →  UI http://localhost:4200 · PostgreSQL wire localhost:5434
+services:
+  cratedb:
+    image: crate:latest
+    container_name: cratedb
+    profiles: [cratedb]
+    restart: unless-stopped
+    environment:
+      CRATE_HEAP_SIZE: 1g
+    command: ["crate", "-Cdiscovery.type=single-node", "-Cnetwork.host=0.0.0.0"]
+    ports:
+      - "${BIND_IP:-127.0.0.1}:4200:4200"
+      - "${BIND_IP:-127.0.0.1}:5434:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+    volumes:
+      - ./volumes/vol-cratedb:/data

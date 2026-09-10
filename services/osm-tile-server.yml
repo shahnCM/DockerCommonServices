@@ -1,0 +1,19 @@
+# OSM raster tile server  →  http://localhost:8182/tile/{z}/{x}/{y}.png
+# First run: `docker compose run --rm osm-tile-server import` (see docker_files/osm-tile).
+services:
+  osm-tile-server:
+    build:
+      context: ./docker_files/osm-tile
+    image: osm-tile-server:local
+    container_name: osm-tile-server
+    profiles: [osm-tile-server]
+    environment:
+      ALLOW_CORS: enabled
+      PGPASSWORD: osmtileserver
+    command: run
+    ports:
+      - "${BIND_IP:-127.0.0.1}:8182:80"
+      - "${BIND_IP:-127.0.0.1}:54320:5432"
+    volumes:
+      - ./volumes/vol-osm/data:/data/database/
+      - ./volumes/vol-osm/tiles:/data/tiles/

@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# Installs node/go/java/maven/gradle defined in /etc/mise/config.toml
-# into /opt/mise. Safe to re-run anytime (e.g. after editing the config).
+# Installs everything defined in /etc/mise/config.toml (node, go, java,
+# maven, gradle, lazydocker) into /opt/mise, then downloads headless
+# Chromium into /opt/caches/ms-playwright. Both are persistent volumes.
+# Safe to re-run anytime (e.g. after editing the config).
 set -e
 . /etc/profile.d/10-workstation.sh
-echo "== installing runtimes from /etc/mise/config.toml =="
+
+echo "== runtimes from /etc/mise/config.toml =="
 mise install --yes
+mise reshim
+
+echo "== headless chromium (shared Playwright cache) =="
+npx --yes playwright install chromium
+
 echo "== done =="
 mise ls
+chromium --version

@@ -1,0 +1,31 @@
+# OSRM routing (car / bicycle / walking)  →  http://localhost:5003 / 5002 / 5001
+# Needs preprocessed .osrm data (see docker_files/osrm-*). Profile `osrm` starts all three.
+services:
+  osrm-car:
+    build:
+      context: ./docker_files/osrm-car
+    image: osrm-car:local
+    container_name: osrm-car
+    profiles: [osrm]
+    ports:
+      - "${BIND_IP:-127.0.0.1}:5003:5000"
+    volumes:
+      - ./volumes/vol-osrm-car/data:/mounted-data
+
+  osrm-bicycle:
+    build:
+      context: ./docker_files/osrm-bicycle
+    image: osrm-bicycle:local
+    container_name: osrm-bicycle
+    profiles: [osrm]
+    ports:
+      - "${BIND_IP:-127.0.0.1}:5002:5000"
+
+  osrm-walking:
+    build:
+      context: ./docker_files/osrm-walking
+    image: osrm-walking:local
+    container_name: osrm-walking
+    profiles: [osrm]
+    ports:
+      - "${BIND_IP:-127.0.0.1}:5001:5000"

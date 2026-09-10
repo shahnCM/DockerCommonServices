@@ -1,15 +1,14 @@
-phpmyadmin:
-  image: phpmyadmin:5
-  container_name: phpmyadmin
-  restart: unless-stopped
-  environment:
-    PMA_HOSTS: "mysql-8,mysql-5"
-    PMA_VERBOSES: "MySQL 8,MySQL 5"
-    UPLOAD_LIMIT: 128M
-  ports:
-    - "8880:80"
-  depends_on:
-    - mysql-8
-    - mysql-5
-  networks:
-    - common
+# phpMyAdmin  →  http://localhost:8880   (server dropdown: MySQL 8 / MySQL 5 / MariaDB)
+# No depends_on on purpose: start only the databases you need; unreachable ones just fail to log in.
+services:
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: phpmyadmin
+    profiles: [phpmyadmin]
+    restart: unless-stopped
+    environment:
+      PMA_HOSTS: "mysql-8,mysql-5,mariadb-10"
+      PMA_VERBOSES: "MySQL 8,MySQL 5,MariaDB 10"
+      UPLOAD_LIMIT: 128M
+    ports:
+      - "${BIND_IP:-127.0.0.1}:8880:80"

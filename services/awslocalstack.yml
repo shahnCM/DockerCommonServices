@@ -1,0 +1,25 @@
+# LocalStack (S3, SQS, Lambda, …)  →  http://localhost:14566
+# Since 2026.03 LocalStack needs an account: put LOCALSTACK_AUTH_TOKEN in .env
+# (free Hobby plan at app.localstack.cloud). Without it the container exits.
+services:
+  awslocalstack:
+    image: localstack/localstack:latest
+    container_name: awslocalstack
+    profiles: [awslocalstack]
+    restart: unless-stopped
+    environment:
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
+      GATEWAY_LISTEN: 0.0.0.0:4566
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+    ports:
+      - "${BIND_IP:-127.0.0.1}:14566:4566"
+      - "${BIND_IP:-127.0.0.1}:14510-14559:4510-4559"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+    volumes:
+      - ./volumes/vol-awslocalstack:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock   # Lambda runs in sibling containers

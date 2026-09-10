@@ -1,0 +1,15 @@
+# Grafana  →  http://localhost:3300   (admin / admin)   — 3000 belongs to the workstation range
+# Runs as your uid so the bind-mounted storage is writable (officially supported).
+services:
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    profiles: [grafana]
+    restart: unless-stopped
+    user: "${USER_UID:-1000}:${USER_GID:-1000}"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    ports:
+      - "${BIND_IP:-127.0.0.1}:3300:3000"
+    volumes:
+      - ./volumes/vol-grafana/storage:/var/lib/grafana

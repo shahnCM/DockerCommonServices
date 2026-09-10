@@ -1,8 +1,0 @@
-adminer:
-  image: adminer
-  container_name: adminer
-  ports:
-    - "8321:8080"
-  networks:
-    - common  
-    

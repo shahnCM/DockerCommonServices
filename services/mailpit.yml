@@ -1,20 +1,21 @@
-mailpit:
-  image: axllent/mailpit:latest
-  container_name: mailpit
-  restart: unless-stopped
-  environment:
-    MP_DATABASE: /data/mailpit.db
-    MP_MAX_MESSAGES: 5000
-  ports:
-    - "1025:1025"   # SMTP — Laravel: MAIL_HOST=mailpit MAIL_PORT=1025 (in-network)
-    - "8125:8025"   # web UI → http://localhost:8125
-                    # (host 8025 is already inside the workstation's WS_PORTS_A range)
-  healthcheck:
-    test: ["CMD", "/mailpit", "readyz"]
-    interval: 10s
-    timeout: 5s
-    retries: 5
-  volumes:
-    - ${VOL_BASE}/vol-mailpit:/data
-  networks:
-    - common
+# Mailpit — catches all outgoing mail.  SMTP mailpit:1025 (in-network) · UI http://localhost:8125
+# Laravel: MAIL_MAILER=smtp MAIL_HOST=mailpit MAIL_PORT=1025
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    profiles: [mailpit]
+    restart: unless-stopped
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: 5000
+    ports:
+      - "${BIND_IP:-127.0.0.1}:1025:1025"   # SMTP from the host
+      - "${BIND_IP:-127.0.0.1}:8125:8025"   # UI (8025 is inside the workstation's port range)
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./volumes/vol-mailpit:/data

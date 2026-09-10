@@ -1,0 +1,17 @@
+# Overpass API (OpenStreetMap queries)  →  http://localhost:12345/api/interpreter
+# OVERPASS_MODE=init downloads and imports the region on first start (slow), then serves.
+services:
+  overpass:
+    image: wiktorn/overpass-api:latest
+    container_name: overpass
+    profiles: [overpass]
+    restart: unless-stopped
+    environment:
+      OVERPASS_META: "yes"
+      OVERPASS_MODE: init
+      OVERPASS_PLANET_URL: https://download.geofabrik.de/asia/bangladesh-latest.osm.bz2
+      OVERPASS_RATE_LIMIT: 1000
+    ports:
+      - "${BIND_IP:-127.0.0.1}:12345:80"
+    volumes:
+      - ./volumes/vol-overpass:/db

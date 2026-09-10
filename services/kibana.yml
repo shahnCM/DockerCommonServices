@@ -1,0 +1,18 @@
+# Kibana (for elasticsearch)  →  http://localhost:5601
+services:
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.19.0
+    container_name: kibana
+    profiles: [kibana]
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "${BIND_IP:-127.0.0.1}:5601:5601"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'

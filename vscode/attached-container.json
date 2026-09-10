@@ -1,0 +1,23 @@
+{
+  "workspaceFolder": "/projects",
+  "remoteUser": "dev",
+  "extensions": [
+    "anthropic.claude-code",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bmewburn.vscode-intelephense-client",
+    "golang.go",
+    "ms-python.python"
+  ],
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash-login",
+    "terminal.integrated.profiles.linux": {
+      "bash-login": { "path": "bash", "args": ["-l"] }
+    },
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/vendor/**": true,
+      "**/.git/objects/**": true
+    }
+  }
+}
