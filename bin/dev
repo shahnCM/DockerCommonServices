@@ -17,6 +17,7 @@
 #   dev rebuild            rebuild the workstation image (after editing docker_files/workstation)
 #   dev lazy               lazydocker — on the host if installed, else inside the workstation
 #   dev vscode [--force]   (re)install the VS Code attach config for this container
+#   dev vscode-server      pre-install the VS Code Server (when VS Code's own download hangs)
 set -euo pipefail
 
 HOST_PWD="$PWD"
@@ -30,7 +31,7 @@ dcA() { docker compose --profile '*' "$@"; }   # every service, enabled or not
 die()  { echo "dev: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required — $2"; }
 
-usage() { sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 # ---- the resolved model: absolute paths, defaults applied, as Compose sees it
 _model=""
@@ -110,6 +111,28 @@ vscode_install() {
   done < <(vscode_cfg_dirs)
   [ "$found" = 1 ] || echo "• VS Code not found on this machine — install it, then run: dev vscode"
 }
+# VS Code Server pre-install. The extension fetches the server through
+# update.code.visualstudio.com, a redirector some ISPs block, while the CDN it
+# points to is usually reachable. Put the server in place ourselves; if that
+# fails, VS Code still tries its own download.
+vscode_server_seed() {
+  command -v code >/dev/null 2>&1 || return 0
+  local commit; commit="$(code --version 2>/dev/null | sed -n 2p)"
+  [ -n "$commit" ] || return 0
+  local dest="$ROOT/volumes/vol-workstation/home/.vscode-server/bin/$commit"
+  [ -x "$dest/bin/code-server" ] && return 0
+  local arch; case "$(uname -m)" in aarch64|arm64) arch=arm64 ;; *) arch=x64 ;; esac
+  local url="https://vscode.download.prss.microsoft.com/dbazure/download/stable/$commit/vscode-server-linux-$arch.tar.gz"
+  local tmp; tmp="$(mktemp -d)"
+  echo "▸ installing VS Code Server ${commit:0:8} into the workstation …"
+  if curl -fsSL --retry 2 -m 600 "$url" -o "$tmp/server.tgz" \
+     && mkdir -p "$dest" && tar -xzf "$tmp/server.tgz" -C "$dest" --strip-components=1; then
+    echo "✔ VS Code Server ready"
+  else
+    rm -rf "$dest"; echo "• could not fetch the server directly; VS Code will try its own download"
+  fi
+  rm -rf "$tmp"
+}
 code_open() {
   need code "install VS Code, then Command Palette → 'Shell Command: Install code command in PATH'"
   ensure_up
@@ -117,6 +140,7 @@ code_open() {
     echo "▸ installing the Dev Containers extension …"
     code --install-extension ms-vscode-remote.remote-containers >/dev/null
   fi
+  vscode_server_seed
   local folder
   if [ -n "${1:-}" ]; then
     local sub="${1#/}"; sub="${sub#projects/}"; folder="/projects/${sub%/}"
@@ -196,6 +220,7 @@ case "${1:-}" in
     need_env; ensure_up; exec docker compose exec "$SVC" bash -lc lazydocker ;;
 
   vscode)       shift; vscode_install "${1:-}" ;;
+  vscode-server) need_env; ensure_up; vscode_server_seed ;;
   code)         need_env; shift; code_open "${1:-}" ;;
 
   "")           need_env; ensure_up; exec docker compose exec -w "$(target_dir)" "$SVC" bash -l ;;

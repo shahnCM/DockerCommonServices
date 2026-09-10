@@ -157,6 +157,9 @@ containers but keeps everything.
 - **node / go / chromium missing right after the first start** → still bootstrapping:
   `dev 'tail -f /opt/caches/bootstrap.log'`. Re-run any time with `dev runtime-bootstrap`.
 - **VS Code lands as root** → `dev vscode --force`, then *Developer: Reload Window*.
+- **VS Code stuck on "Downloading VS Code Server" / "Retrying"** → your network blocks Microsoft's
+  redirector. `dev vscode-server` fetches it from the CDN directly (`dev code` does this on its own),
+  then *Developer: Reload Window*.
 - **Which file is wrong?** → `docker compose --profile '*' config` names file and line.
 - **mysql-5 won't start** → it's an unmaintained amd64 image; use `mariadb-10` instead.
 
