@@ -50,12 +50,14 @@ prepare_dirs() {
   done
 }
 
-# Map the host cwd to the matching path inside the container
+# Map a host path (default: cwd) to the matching path inside the container.
+# Outside PROJECTS_BASE nothing is mounted, so fall back to /projects and say so.
 target_dir() {
-  local p; p="$(proj_dir)"
-  case "$HOST_PWD/" in
-    "$p"/*) echo "/projects${HOST_PWD#"$p"}" ;;
-    *)      echo "/projects" ;;
+  local host="${1:-$HOST_PWD}" p; p="$(proj_dir)"
+  case "$host/" in
+    "$p"/*) echo "/projects${host#"$p"}" ;;
+    *)      echo "dev: $host is not under PROJECTS_BASE ($p) — the container can't see it; landing in /projects" >&2
+            echo "/projects" ;;
   esac
 }
 
@@ -141,11 +143,13 @@ code_open() {
     code --install-extension ms-vscode-remote.remote-containers >/dev/null
   fi
   vscode_server_seed
-  local folder
-  if [ -n "${1:-}" ]; then
-    local sub="${1#/}"; sub="${sub#projects/}"; folder="/projects/${sub%/}"
+  local folder arg="${1:-}"
+  if [ -z "$arg" ] || [ "$arg" = . ]; then
+    folder="$(target_dir)"                                     # where you are standing
+  elif [ -d "$HOST_PWD/$arg" ] || [ -d "$arg" ]; then
+    folder="$(target_dir "$(cd "$HOST_PWD" && cd "$arg" && pwd)")"   # a real host path
   else
-    folder="$(target_dir)"
+    local sub="${arg#/}"; sub="${sub#projects/}"; folder="/projects/${sub%/}"   # a name under /projects
   fi
   local hex; hex="$(printf '{"containerName":"/%s"}' "$SVC" | od -An -tx1 | tr -d ' \n')"
   echo "▸ VS Code → $SVC:$folder"
