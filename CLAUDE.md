@@ -10,6 +10,7 @@ The README is the user manual; this file is the maintainer's contract.
 - `docker_files/workstation/` — the workstation image (see `.claude/skills/workstation-image`).
 - `bin/dev` — the user-facing CLI. It is the only place that knows about `.env` editing, folder pre-creation, VS Code attach, and cwd→`/projects` mapping. Keep it POSIX-bash, macOS-compatible (`sed -i.bak`, `od`), no jq/python.
 - `vscode/attached-container.json` — copied to VS Code's `nameConfigs/workstation.json` by `dev setup`.
+- `prerequisites/` — host-side only: `install-docker.sh` (Ubuntu/Debian, official repo, five packages; `--purge` wipes first) and the human instructions. Never referenced by the container or Compose.
 - `volumes/`, `projects/` — data and code; git-ignored; every bind mount lives here.
 
 ## Rules (why the repo stays simple)

@@ -19,15 +19,22 @@ clone it on a new machine, run one command, keep working.
 
 ## Quick start
 
-1. Install [Docker](https://docs.docker.com/get-docker/) (Linux: `curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER`, then log out and in), and [VS Code](https://code.visualstudio.com/) if you want the editor part.
-2. Clone and run the setup. It writes `.env` with your user id, creates the folders, installs the VS Code
-   attach config, builds the workstation image and starts the enabled services (first build takes 10–20 min):
+1. Get the repo:
    ```bash
    git clone <this repo> ~/workstation && cd ~/workstation
+   ```
+2. Install Docker (see [prerequisites/](prerequisites/README.md) for macOS, Windows, other distros). Ubuntu/Debian:
+   ```bash
+   sudo bash prerequisites/install-docker.sh     # engine + compose plugin, nothing else
+   ```
+   then log out and back in once so the `docker` group applies.
+3. Set up. This writes `.env` with your user id, creates the folders, installs the VS Code attach
+   config, builds the workstation image and starts the enabled services (first build: 10–20 min):
+   ```bash
    bin/dev setup
    echo 'export PATH="$HOME/workstation/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc   # `dev` from anywhere
    ```
-3. Work:
+4. Work:
    ```bash
    dev                 # a shell inside the workstation
    dev code            # VS Code attached to it (Claude Code, ESLint, Prettier, PHP, Go, Python ready)
@@ -160,6 +167,7 @@ services/<name>.yml    one standalone Compose file per service, `profiles: [<nam
 docker_files/          Dockerfiles: workstation, postgres+GIS, OSM tools
 bin/dev                the command above
 vscode/                VS Code attach config
+prerequisites/         host setup: install-docker.sh (+ --purge for a clean slate) and instructions
 volumes/  projects/    data and code (git-ignored)
 .claude/               CLAUDE.md conventions + skills for working on this repo with Claude Code
 ```
