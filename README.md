@@ -125,7 +125,7 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));   // endpoint +
 | Node / Go / Java / Maven / Gradle | via [mise](https://mise.jdx.dev): `mise ls`, per project `mise use node@18` (auto-switch on `cd`) |
 | headless Chromium | `chromium --headless --screenshot=x.png https://…`; `CHROME_BIN` is set; Playwright, Puppeteer, Dusk, Lighthouse find it. Shared cache: `npx playwright install chromium` is instant after the first time |
 | Docker | `docker`, `docker compose`, `lazydocker` talk to the host daemon (the socket is mounted: full control of host Docker, fine for a personal box) |
-| Claude Code | `claude` (CLI, apt stable channel) and the VS Code extension; login persists in `~/.claude` |
+| Claude Code | already inside: `claude` CLI (apt stable channel) and the VS Code extension, installed into the container by `dev code`. Nothing to install on the host. Sign in once with a Pro/Max/Team/Enterprise or Console account (the free plan does not include Claude Code); the login persists in `~/.claude` |
 | also | git, curl, jq, ripgrep, mysql/psql/redis clients, sqlite3, python3 + venv |
 
 `sudo apt install …` inside the container is lost on `dev rebuild`; bake packages into
