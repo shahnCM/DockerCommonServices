@@ -7,7 +7,14 @@
     "esbenp.prettier-vscode",
     "bmewburn.vscode-intelephense-client",
     "golang.go",
-    "ms-python.python"
+    "ms-python.python",
+    "vscjava.vscode-java-pack",
+    "vmware.vscode-boot-dev-pack",
+    "fwcd.kotlin",
+    "rust-lang.rust-analyzer",
+    "Shopify.ruby-lsp",
+    "REditorSupport.r",
+    "Dart-Code.flutter"
   ],
   "settings": {
     "terminal.integrated.defaultProfile.linux": "bash-login",

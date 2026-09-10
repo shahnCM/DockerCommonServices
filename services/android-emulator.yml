@@ -1,0 +1,25 @@
+# Android 14 emulator (x86_64 + KVM)  →  screen: http://localhost:6080   adb: android-emulator:5555 inside, localhost:5555 on the host
+# Linux hosts only: needs /dev/kvm (Docker Desktop on macOS/Windows has none) — README "Android emulator" has the host-side alternative.
+# Nothing is persisted on purpose: every start is a factory-fresh device. Use `dev down` / `dev up`, never docker stop + start
+# (stale lock files keep it from coming up again). Costs ≈ 4 GB of host RAM and boots in
+# under a minute with the default Nexus 5 profile (1080x1920). Big-screen profiles (Galaxy S10 = 1440x3040) are rendered in software
+# and cost 6 GB + five cores — measured. Do not run it next to an Android Gradle build on a 12 GB host.
+services:
+  android-emulator:
+    image: budtmo/docker-android:emulator_14.0_v3.7.0-p0
+    container_name: android-emulator
+    profiles: [android-emulator]
+    restart: "no"               # on purpose: 4 GB — never comes back by itself after a reboot; dev up android-emulator
+    devices:
+      - /dev/kvm:/dev/kvm
+    environment:
+      EMULATOR_DEVICE: ${ANDROID_EMULATOR_DEVICE:-Nexus 5}   # 1080x1920; also Pixel 8 / Pixel 9 / Pixel C (tablet) / Samsung Galaxy S10 …
+      WEB_VNC: "true"
+      EMULATOR_ADDITIONAL_ARGS: ${ANDROID_EMULATOR_ARGS:--no-boot-anim -no-audio}   # extra emulator flags; guest RAM is forced to 4 GB by the image
+    ports:
+      - "${BIND_IP:-127.0.0.1}:6080:6080"   # noVNC — the screen in your browser
+      - "${BIND_IP:-127.0.0.1}:5555:5555"   # adb  — host side: adb connect localhost:5555
+    deploy:
+      resources:
+        limits:
+          memory: 6G          # hard cap so a runaway emulator cannot take the host down (normal use ≈ 4 GB)

@@ -2,8 +2,10 @@
 # ============================================================
 # workstation — one container that feels like your local machine
 #   PHP 7.2 → 8.4 side by side (Sury PPA)       php7.2 … php8.4, composer7.2 …
-#   node / go / java / maven / gradle via mise    auto-switch per project
-#   FrankenPHP · headless Chromium (Playwright) · Docker CLI · Claude Code
+#   node / go / java / kotlin / rust / ruby / python / flutter via mise
+#                                                auto-switch per project
+#   R (CRAN) · Android SDK + adb · FrankenPHP · headless Chromium (Playwright)
+#   Docker CLI · Claude Code
 # Rebuild after editing:  dev rebuild
 # ============================================================
 FROM ubuntu:24.04
@@ -100,9 +102,28 @@ RUN python3 -m venv /tmp/pw && /tmp/pw/bin/pip install -q playwright && \
     /tmp/pw/bin/playwright install-deps chromium && \
     rm -rf /tmp/pw /var/lib/apt/lists/*
 
-# ---- mise (node / go / java / maven / gradle / lazydocker) ----
+# ---- mise (node / go / java / kotlin / maven / gradle / rust / ruby / python / flutter / lazydocker)
 RUN curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh
 COPY mise-config.toml /etc/mise/config.toml
+
+# ---- R (CRAN, current release) + build libs for Ruby, R packages, Flutter ----
+# Ruby is compiled by mise at first start (needs libyaml + gmp). R packages
+# compile against the usual curl/xml2/fontconfig/harfbuzz/freetype/png/tiff/
+# jpeg dev libs (tidyverse & co). `file` and libglu1-mesa keep `flutter doctor`
+# and the Android tooling quiet. Non-interactive install.packages() needs a
+# mirror preset; the user library goes to the persistent cache (R_LIBS_USER).
+RUN curl -fsSL https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc -o /etc/apt/keyrings/cran.asc && \
+    echo "deb [signed-by=/etc/apt/keyrings/cran.asc] https://cloud.r-project.org/bin/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME")-cran40/" \
+      > /etc/apt/sources.list.d/cran.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
+      libyaml-dev libgmp-dev \
+      r-base r-base-dev \
+      libcurl4-openssl-dev libxml2-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
+      libfreetype-dev libpng-dev libtiff-dev libjpeg-dev \
+      file libglu1-mesa && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /etc/R && \
+    printf '\noptions(repos = c(CRAN = "https://cloud.r-project.org"))\n' >> /etc/R/Rprofile.site
 
 # ---- dev user (uid/gid match your host user) ------------------
 RUN userdel -r ubuntu 2>/dev/null || true; \
@@ -114,9 +135,10 @@ RUN userdel -r ubuntu 2>/dev/null || true; \
 # ---- workstation scripts & shell setup ------------------------
 COPY profile.d-workstation.sh /etc/profile.d/10-workstation.sh
 COPY bashrc.seed /etc/workstation/bashrc.seed
-COPY php-default runtime-bootstrap chromium entrypoint.sh /usr/local/bin/
+COPY php-default runtime-bootstrap android-sdk-setup adb-emu chromium entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/php-default /usr/local/bin/runtime-bootstrap \
-             /usr/local/bin/chromium /usr/local/bin/entrypoint.sh
+             /usr/local/bin/android-sdk-setup /usr/local/bin/adb-emu /usr/local/bin/chromium \
+             /usr/local/bin/entrypoint.sh
 
 # persistent dirs (bind-mounted from ./volumes/vol-workstation)
 RUN mkdir -p /projects /opt/mise /opt/caches && \
@@ -124,12 +146,18 @@ RUN mkdir -p /projects /opt/mise /opt/caches && \
 
 # Everything that doesn't need root is visible to non-login shells too
 # (VS Code's extension host, `docker exec`, cron-like runners).
+# Keep in sync with profile.d-workstation.sh.
 ENV MISE_DATA_DIR=/opt/mise \
     MISE_CACHE_DIR=/opt/caches/mise-cache \
     PLAYWRIGHT_BROWSERS_PATH=/opt/caches/ms-playwright \
     CHROME_BIN=/usr/local/bin/chromium \
     CHROME_PATH=/usr/local/bin/chromium \
-    PATH=/home/dev/.local/bin:/opt/mise/shims:/opt/caches/gopath/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    CHROME_EXECUTABLE=/usr/local/bin/chromium \
+    ANDROID_HOME=/opt/caches/android-sdk \
+    ANDROID_SDK_ROOT=/opt/caches/android-sdk \
+    PUB_CACHE=/opt/caches/pub \
+    R_LIBS_USER=/opt/caches/R \
+    PATH=/home/dev/.local/bin:/opt/mise/shims:/home/dev/.cargo/bin:/opt/caches/android-sdk/cmdline-tools/latest/bin:/opt/caches/android-sdk/platform-tools:/opt/caches/gopath/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Default user is `dev`: `docker exec`, VS Code attach and `dev` all land
 # as you, never root. The entrypoint uses sudo for the few root-only steps.

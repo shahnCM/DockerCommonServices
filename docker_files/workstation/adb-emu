@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# adb-emu [host] — attach the `android-emulator` service to this workstation's adb
+# and make Metro (React Native, port 8081) reachable from the app. Run it after
+# every `dev up android-emulator` (the device is factory-fresh each time).
+#   1. adb connect over the Compose network (drops a stale connection first)
+#   2. metro.host=workstation (needs adb root, allowed on this google_apis image):
+#      a stock emulator otherwise looks for Metro at 10.0.2.2 — its own
+#      container, not this one — and shows "Unable to load script"
+#   3. adb reverse 8081 for anything that does use localhost
+set -e
+host="${1:-android-emulator}"
+dev="$host:5555"
+adb disconnect "$dev" >/dev/null 2>&1 || true
+adb connect "$dev" >/dev/null
+adb -s "$dev" wait-for-device
+prop() { adb -s "$dev" shell getprop "$1" 2>/dev/null | tr -d '\r'; }
+if [ "$(prop metro.host)" != "workstation" ]; then
+  adb -s "$dev" root >/dev/null 2>&1 || true
+  sleep 2
+  adb connect "$dev" >/dev/null 2>&1 || true
+  adb -s "$dev" wait-for-device
+  adb -s "$dev" shell setprop metro.host workstation 2>/dev/null \
+    || echo "!! could not set metro.host (no adb root?) — React Native needs 'Change bundle location' → workstation:8081" >&2
+fi
+adb -s "$dev" reverse tcp:8081 tcp:8081 >/dev/null
+echo "$dev: Android $(prop ro.build.version.release) (API $(prop ro.build.version.sdk)), metro.host=$(prop metro.host), reverse 8081 ok"

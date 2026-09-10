@@ -1,8 +1,9 @@
 # Portable Workstation
 
 One Docker container that behaves like your dev machine — PHP 7.2 → 8.4 side by side, Node, Go,
-Java, headless Chromium (Playwright), Docker CLI, lazydocker and Claude Code — plus every database,
-queue and admin UI you might need, each in its own file, started only when you want it.
+Java + Kotlin, Rust, Ruby, Python, R, Flutter + the Android SDK, headless Chromium (Playwright),
+Docker CLI, lazydocker and Claude Code — plus every database, queue, admin UI and an Android
+emulator you might need, each in its own file, started only when you want it.
 
 Your code and all data live in plain folders inside this repo, so the whole thing moves with you:
 clone it on a new machine, run one command, keep working.
@@ -12,8 +13,8 @@ clone it on a new machine, run one command, keep working.
  ─────────────────────────────              ─────────────────────────────
  projects/  ─────────────────────────────►  /projects      (your code)
  volumes/vol-workstation/home ───────────►  /home/dev      (dotfiles, ~/.claude, VS Code server)
- volumes/vol-workstation/mise ───────────►  /opt/mise      (node/go/java/lazydocker)
- volumes/vol-workstation/caches ─────────►  /opt/caches    (composer/npm/go/m2/gradle/chromium)
+ volumes/vol-workstation/mise ───────────►  /opt/mise      (node/go/java/rust/ruby/python/flutter …)
+ volumes/vol-workstation/caches ─────────►  /opt/caches    (composer/npm/go/m2/gradle/chromium/android-sdk/pub/R)
  volumes/vol-mysql-8, vol-redis-7, … ────►  each service's data
 ```
 
@@ -40,12 +41,13 @@ clone it on a new machine, run one command, keep working.
    ```bash
    git clone git@github.com:you/my-app.git projects/my-app
    cd projects/my-app && dev        # a shell inside the workstation, in that folder
-   dev code .                       # VS Code attached (Claude Code, ESLint, Prettier, PHP, Go, Python ready)
+   dev code .                       # VS Code attached (Claude Code, PHP, Go, Python, Java/Spring, Kotlin, Rust, Ruby, R, Flutter ready)
    dev list                         # which services exist / are enabled / are running
    ```
 
-Node, Go, Java and Chromium download in the background on the very first start (a few minutes,
-`dev logs workstation` or `tail -f /opt/caches/bootstrap.log` inside). PHP works immediately.
+Node, Go, Java, Kotlin, Rust, Ruby, Python, Flutter, the Android SDK and Chromium download in the
+background on the very first start (10–20 min, Ruby is compiled; `dev logs workstation` or
+`tail -f /opt/caches/bootstrap.log` inside). PHP works immediately.
 
 ## Daily use
 
@@ -105,6 +107,7 @@ All ports bind to `127.0.0.1` unless you set `BIND_IP=0.0.0.0` in `.env`.
 | `phpmyadmin` · `adminer` · `pgadmin` | DB web UIs | 8880 · 8321 · 5050 | pgadmin login in `.env` |
 | `grafana` | Grafana | 3300 | `admin` / `admin` |
 | `grpcui` | web UI for a gRPC server in the workstation | 8480 | `GRPCUI_TARGET=workstation:50051` |
+| `android-emulator` | Android 14 emulator (x86_64 + KVM), screen in the browser | 6080 · adb 5555 | Linux hosts only (`/dev/kvm`), ≈ 4 GB RAM; inside: `adb-emu`, see below |
 | `awslocalstack` | LocalStack | 14566 | needs `LOCALSTACK_AUTH_TOKEN` (free Hobby plan) |
 | `ms-sql` | SQL Server 2022 Developer | 9433 | `sa` / `.env`, needs 2 GB |
 | `cassandra` · `scylla` · `scylla-manager` | wide-column stores | 9044 · 9043 · 5080 | |
@@ -125,7 +128,10 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));   // endpoint +
 |---|---|
 | PHP | `php7.2` … `php8.4`, `composer7.2` … `composer8.4`; plain `php` follows `php-default 8.1` (persisted); `phpv` lists them |
 | Octane | `frankenphp` (static, own PHP), `swoole` + opcache for PHP 8.x |
-| Node / Go / Java / Maven / Gradle | via [mise](https://mise.jdx.dev): `mise ls`, per project `mise use node@18` (auto-switch on `cd`) |
+| Node / Go / Java / Kotlin / Rust / Ruby / Python / Flutter | via [mise](https://mise.jdx.dev): `mise ls`; per project `mise use node@18`, `ruby@3.3` … (auto-switch on `cd`); Maven and Gradle too |
+| Java / Kotlin | Temurin 21 + Maven + Gradle: Spring Boot runs as is (`./mvnw spring-boot:run`, 8080 is published); `kotlinc` for scripts; older projects: `mise use java@temurin-17` |
+| Python / R | `python` + `pip` from mise, no venv needed; R from CRAN (`Rscript -e 'install.packages("tidyverse")'`, library in `/opt/caches/R`); Jupyter: `pip install jupyterlab && jupyter lab --ip 0.0.0.0 --port 8088` → http://localhost:8088 (a freshly pip/gem-installed CLI is not on PATH in scripts until `mise reshim`) |
+| Android / Flutter / React Native | Android SDK in `/opt/caches/android-sdk` (`sdkmanager`, `adb`, licenses accepted; Gradle fetches other platforms itself), `flutter` + Dart, `CHROME_EXECUTABLE` set for Flutter web. Gradle is capped at 3 GB heap with 10-min daemon timeout via `/opt/caches/gradle/gradle.properties` (edit freely). Device: the `android-emulator` service, below |
 | headless Chromium | `chromium --headless --screenshot=x.png https://…`; `CHROME_BIN` is set; Playwright, Puppeteer, Dusk, Lighthouse find it. Shared cache: `npx playwright install chromium` is instant after the first time |
 | Docker | `docker`, `docker compose`, `lazydocker` talk to the host daemon (the socket is mounted: full control of host Docker, fine for a personal box) |
 | Claude Code | already inside: `claude` CLI (apt stable channel) and the VS Code extension, installed into the container by `dev code`. Nothing to install on the host. Sign in once with a Pro/Max/Team/Enterprise or Console account (the free plan does not include Claude Code); the login persists in `~/.claude` |
@@ -134,6 +140,28 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));   // endpoint +
 `sudo apt install …` inside the container is lost on `dev rebuild`; bake packages into
 `docker_files/workstation/Dockerfile` instead. Runtimes go in `docker_files/workstation/mise-config.toml`
 (then `runtime-bootstrap`, no rebuild).
+
+### Android emulator
+
+`android-emulator` is an Android 14 image (x86_64, needs `/dev/kvm`, so Linux hosts only) whose
+screen is served as a web page. The workstation talks to it over the shared network:
+
+```bash
+dev up android-emulator            # screen: http://localhost:6080  (boots in under a minute)
+cd projects/my-app && dev          # inside the workstation:
+adb-emu                            #   adb connect + metro.host=workstation + adb reverse 8081 (run after every emulator start)
+npx react-native run-android --active-arch-only   # builds only the emulator's x86_64 (4x faster); or: flutter run · ./gradlew installDebug
+```
+
+`adb-emu` attaches the device and points React Native at Metro in the workstation (a stock emulator would
+look for it at 10.0.2.2, its own container, and show "Unable to load script"). The device is
+factory-fresh on every start: use `dev down android-emulator` / `dev up android-emulator`, never
+`docker stop` + `start` (the image leaves lock files behind and does not come up again). The default screen is a Nexus 5 (1080x1920); `ANDROID_EMULATOR_DEVICE` in `.env` picks another, but big ones (Galaxy S10, 1440x3040) are software-rendered and cost 6 GB + five cores.
+Memory on a 12 GB laptop: emulator ≈ 4 GB, an Android Gradle build ≈ 3 GB — run one at a time and stop the
+emulator (`dev down android-emulator`) before big builds; it never auto-starts after a reboot.
+On macOS/Windows Docker has no KVM: run Android Studio's emulator (or a phone) on the host, start the
+host's adb server with `adb -a nodaemon server`, and inside the workstation
+`export ADB_SERVER_SOCKET=tcp:host.docker.internal:5037`.
 
 ### VS Code details
 
@@ -157,8 +185,11 @@ containers but keeps everything.
 - **Service exits with a permission error on its data folder** → the folder under `volumes/` was created
   by Docker as root (happens only if you bypass `dev`): `sudo chown -R $(id -u):$(id -g) volumes/vol-<name>`.
 - **"port is already allocated"** → something on the host uses it; `ss -ltnp | grep :<port>`.
-- **node / go / chromium missing right after the first start** → still bootstrapping:
-  `dev 'tail -f /opt/caches/bootstrap.log'`. Re-run any time with `dev runtime-bootstrap`.
+- **node / go / ruby / flutter / adb / chromium missing right after the first start** → still bootstrapping:
+  `dev 'tail -f /opt/caches/bootstrap.log'`. Re-run any time (also after editing `mise-config.toml`)
+  with `dev runtime-bootstrap`.
+- **android-emulator: "error gathering device information" / no `/dev/kvm`** → KVM exists only on Linux
+  hosts (and is off inside most VMs). See *Android emulator* above for the host-side alternative.
 - **VS Code lands as root** → `dev vscode --force`, then *Developer: Reload Window*.
 - **VS Code stuck on "Downloading VS Code Server" / "Retrying"** → your network blocks Microsoft's
   redirector. `dev vscode-server` fetches it from the CDN directly (`dev code` does this on its own),

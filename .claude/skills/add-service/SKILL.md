@@ -41,6 +41,7 @@ services:
    - `depends_on` only when the service is useless without the other one (kibana → elasticsearch). Admin UIs do not depend on databases.
    - If the container runs as a fixed non-root uid and writes a bind mount, either add `user: "${USER_UID:-1000}:${USER_GID:-1000}"` (when the image supports arbitrary uids) or say so in the header comment. `bin/dev` pre-creates every bind folder as the host user.
    - Verify the tag exists: `docker manifest inspect <image>:<tag>`.
+   - `restart: unless-stopped` is the norm. A resource hog that is started on demand (android-emulator, ≈ 4 GB) uses `restart: "no"` plus a `deploy.resources.limits.memory` cap, so it never comes back by itself after a reboot and cannot swamp the host. Hardware pass-through goes in `devices:` (`/dev/kvm`), which makes the service Linux-only — say so in the header comment.
 
 3. List the file in `compose.yml` under `include.path` in the matching section.
 

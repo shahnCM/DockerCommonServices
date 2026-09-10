@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# android-sdk-setup [extra sdkmanager packages …]
+# Installs the Android command-line tools into $ANDROID_HOME (a persistent
+# volume), accepts the licenses and installs platform-tools (adb) plus one
+# platform / build-tools pair. Gradle (AGP) downloads whatever else a project
+# asks for on its own once the licenses are accepted. Idempotent; re-run anytime.
+#
+#   android-sdk-setup                            # baseline (runtime-bootstrap does this)
+#   android-sdk-setup "platforms;android-34"     # add more packages
+#   sdkmanager --list                            # everything that exists
+set -e
+# https://developer.android.com/studio#command-line-tools-only
+CLT_BUILD=15859902
+CLT_SHA256=4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
+BASE_PKGS="platform-tools platforms;android-36 build-tools;36.0.0"
+
+export ANDROID_HOME="${ANDROID_HOME:-/opt/caches/android-sdk}"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+mkdir -p "$ANDROID_HOME"
+
+if [ ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+  echo "-- downloading command-line tools (build $CLT_BUILD)"
+  tmp="$(mktemp -d)"
+  curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-${CLT_BUILD}_latest.zip" -o "$tmp/clt.zip"
+  echo "$CLT_SHA256  $tmp/clt.zip" | sha256sum -c --quiet
+  unzip -q "$tmp/clt.zip" -d "$tmp"
+  mkdir -p "$ANDROID_HOME/cmdline-tools"
+  rm -rf "$ANDROID_HOME/cmdline-tools/latest"
+  mv "$tmp/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+  rm -rf "$tmp"
+fi
+export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+
+echo "-- accepting licenses"
+yes | sdkmanager --licenses > /dev/null
+
+echo "-- installing: $BASE_PKGS $*"
+log="$(mktemp)"
+# shellcheck disable=SC2086  # BASE_PKGS is a deliberate word list
+if ! sdkmanager --install $BASE_PKGS "$@" > "$log" 2>&1; then
+  tr '\r' '\n' < "$log" | grep -vE '^\[=*' ; rm -f "$log"; exit 1
+fi
+rm -f "$log"
+
+echo "-- installed in $ANDROID_HOME:"
+sdkmanager --list_installed 2>/dev/null | grep -E '^\s+\S+\s+\|' | awk -F'|' '{gsub(/^ +| +$/,"",$1); print "   " $1}'

@@ -45,6 +45,8 @@ include:
       - services/grpcui.yml
       - services/mailpit.yml
       - services/awslocalstack.yml
+      # ---- mobile ---------------------------------------------
+      - services/android-emulator.yml
       # ---- maps (OpenStreetMap stack, needs a .osm.pbf) ------
       - services/nominatim.yml
       - services/osrms.yml

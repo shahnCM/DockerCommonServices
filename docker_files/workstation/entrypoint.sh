@@ -6,9 +6,20 @@ set -u
 
 # 1. own the bind mounts (top level only — never -R over big caches)
 sudo chown dev:dev /home/dev /opt/mise /opt/caches /projects 2>/dev/null || true
-for d in composer npm go-mod gopath m2 gradle mise-cache ms-playwright; do
+for d in composer npm go-mod gopath m2 gradle mise-cache ms-playwright android-sdk pub R; do
   mkdir -p "/opt/caches/$d"
 done
+
+# 1b. Gradle defaults for this box (user-level wins over project gradle.properties):
+#     3 GB heap instead of the 8 GB some templates ask for, daemons exit after
+#     10 idle minutes instead of 3 hours. Seeded once; edit the file freely.
+if [ ! -f /opt/caches/gradle/gradle.properties ]; then
+  cat > /opt/caches/gradle/gradle.properties <<EOF
+# seeded by the workstation entrypoint — yours to edit (persistent volume)
+org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g
+org.gradle.daemon.idletimeout=600000
+EOF
+fi
 
 # 2. docker socket: let `dev` drive the host daemon (docker, lazydocker)
 #    without sudo. The socket's group id differs per host, so map it here.
@@ -33,7 +44,7 @@ if [ ! -e /home/dev/.local/bin/php ]; then
   php-default "${PHP_DEFAULT:-8.3}" || true
 fi
 
-# 5. one-time install of node/go/java/maven/gradle/lazydocker + Chromium
+# 5. one-time install of every mise runtime + Chromium + the Android SDK
 #    into the persistent volumes. Runs in the background so the container
 #    is usable immediately (PHP works right away). A leftover .bootstrapping
 #    marker can only be stale at container start, so retry.

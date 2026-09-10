@@ -1,7 +1,8 @@
 # CLAUDE.md — portable-workstation
 
-A Docker Compose repo: one long-running "workstation" container (PHP 7.2–8.4, Node/Go/Java via mise,
-headless Chromium, Docker CLI, Claude Code) plus ~35 optional services, one file each.
+A Docker Compose repo: one long-running "workstation" container (PHP 7.2–8.4; Node/Go/Java/Kotlin/Rust/
+Ruby/Python/Flutter via mise; R; Android SDK + adb; headless Chromium; Docker CLI; Claude Code) plus ~36
+optional services (databases, queues, admin UIs, an Android emulator), one file each.
 The README is the user manual; this file is the maintainer's contract.
 
 ## Layout

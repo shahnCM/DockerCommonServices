@@ -4,14 +4,20 @@
 # project folder and the version switches automatically on `cd`.
 #
 # Add more anytime:  mise use -g node@18   |   mise install go@1.21
+# Apply edits here:  runtime-bootstrap     (no rebuild needed)
 
 [tools]
 node = "lts"
 go = "latest"
-java = "temurin-21"
+java = "temurin-21"       # Spring Boot 3 needs 17+; per project: mise use java@temurin-17
+kotlin = "latest"         # kotlinc + kotlin scripts (Gradle downloads its own compiler anyway)
 maven = "latest"
 gradle = "latest"
-lazydocker = "latest"   # `lazydocker` inside the workstation watches every container
+rust = "latest"           # rustup-managed; `cargo install` binaries land in ~/.cargo/bin
+ruby = "latest"           # compiled from source at first bootstrap (a few minutes)
+python = "latest"         # prebuilt; `pip install jupyterlab pandas …` works, no venv needed
+flutter = "latest"        # + Dart. The Android SDK comes from android-sdk-setup
+lazydocker = "latest"     # `lazydocker` inside the workstation watches every container
 
 [settings]
 experimental = true

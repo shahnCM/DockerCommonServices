@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Installs everything defined in /etc/mise/config.toml (node, go, java,
-# maven, gradle, lazydocker) into /opt/mise, then downloads headless
-# Chromium into /opt/caches/ms-playwright. Both are persistent volumes.
-# Safe to re-run anytime (e.g. after editing the config).
+# kotlin, maven, gradle, rust, ruby, python, flutter, lazydocker) into
+# /opt/mise, then headless Chromium into /opt/caches/ms-playwright and the
+# Android SDK (cmdline-tools, platform-tools, one platform) into
+# /opt/caches/android-sdk. All of it lives in persistent volumes.
+# Safe to re-run anytime (e.g. after editing the config): every step is
+# idempotent, already-installed pieces are skipped.
 set -e
 . /etc/profile.d/10-workstation.sh
 
@@ -13,6 +16,14 @@ mise reshim
 echo "== headless chromium (shared Playwright cache) =="
 npx --yes playwright install chromium
 
+echo "== android sdk (cmdline-tools, platform-tools, licenses) =="
+android-sdk-setup
+
+echo "== flutter: android + web artifacts =="
+flutter --disable-analytics >/dev/null 2>&1 || true
+flutter precache --android --web || echo "!! flutter precache failed — retry later with: flutter precache"
+
 echo "== done =="
 mise ls
 chromium --version
+adb --version | head -1
