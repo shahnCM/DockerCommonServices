@@ -136,7 +136,7 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));   // endpoint +
 | Java / Kotlin | Temurin 21 + Maven + Gradle: Spring Boot runs as is (`./mvnw spring-boot:run`, 8080 is published); `kotlinc` for scripts; older projects: `mise use java@temurin-17` |
 | Python / R | `python` + `pip` from mise, no venv needed; R from CRAN (`Rscript -e 'install.packages("tidyverse")'`, library in `/opt/caches/R`); Jupyter: `pip install jupyterlab && jupyter lab --ip 0.0.0.0 --port 8088` → http://localhost:8088 (a freshly pip/gem-installed CLI is not on PATH in scripts until `mise reshim`) |
 | Android / Flutter / React Native | Android SDK in `/opt/caches/android-sdk` (`sdkmanager`, `adb`, licenses accepted; Gradle fetches other platforms itself), `flutter` + Dart, `CHROME_EXECUTABLE` set for Flutter web. Gradle is capped at 3 GB heap with 10-min daemon timeout via `/opt/caches/gradle/gradle.properties` (edit freely). Device: the `android-emulator` service, below |
-| headless Chromium | `chromium --headless --screenshot=x.png https://…`; `CHROME_BIN` is set; Playwright, Puppeteer, Dusk, Lighthouse find it. Shared cache: `npx playwright install chromium` is instant after the first time |
+| headless Chromium | `chromium --headless --screenshot=x.png https://…` — the wrapper adds `--no-sandbox --disable-dev-shm-usage`, which the container cannot run without. `CHROME_BIN` is set; Playwright, Dusk and Lighthouse work as they are, but **Puppeteer needs `args: ['--no-sandbox','--disable-dev-shm-usage']`** because it launches the binary itself and bypasses the wrapper. Shared cache: `npx playwright install chromium` is instant after the first time (never re-run it, the browsers are already there) |
 | Docker | `docker`, `docker compose`, `lazydocker` talk to the host daemon (the socket is mounted: full control of host Docker, fine for a personal box) |
 | Claude Code | already inside: `claude` CLI (apt stable channel) and the VS Code extension, installed into the container by `dev code`. Nothing to install on the host. Sign in once with a Pro/Max/Team/Enterprise or Console account (the free plan does not include Claude Code); the login persists in `~/.claude` |
 | also | git, curl, jq, ripgrep, mysql/psql/redis clients, sqlite3, python3 + venv |
@@ -194,6 +194,13 @@ containers but keeps everything.
   with `dev runtime-bootstrap`.
 - **android-emulator: "error gathering device information" / no `/dev/kvm`** → KVM exists only on Linux
   hosts (and is off inside most VMs). See *Android emulator* above for the host-side alternative.
+- **Chromium dumps core / "Failed to launch the browser process"** → something launched the browser
+  binary directly instead of the `chromium` wrapper, so it tried to start its sandbox. The container
+  has no unprivileged user namespaces. Pass `--no-sandbox --disable-dev-shm-usage` in that tool's
+  launch args (Puppeteer needs this; Playwright already does it).
+- **Host disk filling up with Docker data** → `bash prerequisites/docker-cleanup.sh --dry-run` shows
+  what is reclaimable, then run it without `--dry-run`. It keeps named volumes and reusable build
+  cache; `--all` and `--nuke` go further and say exactly what they will delete first.
 - **VS Code lands as root** → `dev vscode --force`, then *Developer: Reload Window*.
 - **VS Code stuck on "Downloading VS Code Server" / "Retrying"** → your network blocks Microsoft's
   redirector. `dev vscode-server` fetches it from the CDN directly (`dev code` does this on its own),

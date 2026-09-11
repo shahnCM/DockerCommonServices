@@ -43,6 +43,14 @@ docker compose exec workstation runtime-bootstrap         # re-run, idempotent
 
 9. **Config itself is broken** (`dev` prints YAML errors) → `docker compose --profile '*' config` names the file and line. Only files listed in `compose.yml` are parsed.
 
+9b. **Workstation: Chromium dumps core, or "Failed to launch the browser process"** → the sandbox was attempted. It cannot work here (no unprivileged user namespaces) and the `chromium` wrapper exists to pass `--no-sandbox --disable-dev-shm-usage` for you, so this only happens when a tool launches the binary under `/opt/caches/ms-playwright` by path. Add both flags to that tool's launch args. Playwright already does it; Puppeteer does not. Check the wrapper is the one in git — a container recreated without `dev rebuild` reverts image files:
+   ```bash
+   bin/dev "grep -c '^exec .*--no-sandbox' /usr/local/bin/chromium"   # 1 = fixed, 0 = rebuild needed
+   bin/dev 'chromium --headless --dump-dom https://example.com | head -3'
+   ```
+
+9c. **Host is out of disk** → `bash prerequisites/docker-cleanup.sh --dry-run` prints what is reclaimable without deleting anything; drop `--dry-run` to do it. The default keeps running containers, tagged images, every named volume and reusable build cache. `--all` also removes unused named volumes (database data), `--nuke` removes everything; both list names and require typing `yes`. This repo's own data is in bind mounts under `volumes/`, which no level touches.
+
 10. **android-emulator**
    - does not start, "error gathering device information" / `/dev/kvm` → Linux host with KVM only (off in most VMs, absent in Docker Desktop). README "Android emulator" has the host-side alternative.
    - up but no QEMU process, `adb connect` fails, supervisor shows `d_screen`/`device` FATAL → it was `docker stop`ped and `start`ed; stale lock files. `dev down android-emulator && dev up android-emulator` (never stop/start).
