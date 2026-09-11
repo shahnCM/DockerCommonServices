@@ -4,6 +4,20 @@
 # use it via CHROME_BIN (already exported) or by calling `chromium` directly.
 #
 #   chromium --headless --screenshot=out.png --window-size=1280,800 https://example.com
+#   chromium --headless --print-to-pdf=out.pdf  https://example.com
+#   chromium --headless --dump-dom             http://mailpit:8025
+#
+# Two flags are prepended for you, because in this container neither can be
+# left out:
+#   --no-sandbox            Chromium's sandbox needs unprivileged user
+#                           namespaces. Ubuntu hosts ship
+#                           kernel.apparmor_restrict_unprivileged_userns=1 and
+#                           Playwright's chrome_sandbox is not setuid-root, so
+#                           the sandbox has no way to start — Chromium dumps
+#                           core instead. Isolation here is the container.
+#   --disable-dev-shm-usage Docker gives /dev/shm 64 MB; real pages exhaust it
+#                           and tabs die. This puts shared memory under /tmp.
+# Set CHROMIUM_NO_DEFAULT_FLAGS=1 to get the bare binary with no flags added.
 #
 # Missing? Run:  npx playwright install chromium   (or wait for runtime-bootstrap)
 set -u
@@ -14,4 +28,7 @@ if [ -z "$bin" ] || [ ! -x "$bin" ]; then
   echo "          (runtime-bootstrap does this on first start; tail -f /opt/caches/bootstrap.log)" >&2
   exit 1
 fi
-exec "$bin" "$@"
+if [ -n "${CHROMIUM_NO_DEFAULT_FLAGS:-}" ]; then
+  exec "$bin" "$@"
+fi
+exec "$bin" --no-sandbox --disable-dev-shm-usage "$@"
