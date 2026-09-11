@@ -14,6 +14,12 @@ mise install --yes
 mise reshim
 
 echo "== headless chromium (shared Playwright cache) =="
+# Machine-level default, so every project has a browser without setting one up.
+# Deliberately run outside any project, which means it fetches the NEWEST build --
+# Playwright prints a warning about that here, and it is expected. A project that
+# pins a Playwright version installs its own build into this same shared cache with
+# `playwright install chromium` run from the project; the builds sit side by side.
+# Do not make this project-aware: the image has no idea which projects exist.
 npx --yes playwright install chromium
 
 echo "== android sdk (cmdline-tools, platform-tools, licenses) =="
