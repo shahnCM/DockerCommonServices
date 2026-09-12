@@ -59,6 +59,7 @@ background on the very first start (10–20 min, Ruby is compiled; `dev logs wor
 |---|---|
 | shell in the workstation, in the project you're standing in | `cd projects/my-app && dev` |
 | run one command inside | `dev php7.4 -v` · `dev composer install` · `dev npm run dev -- --host` |
+| run node/npm/npx/pnpm straight from the host | just type them — `bin/` has forwarding shims |
 | VS Code on a project (a new window each time) | `dev code .` · `dev code my-app` |
 | where my code lives (mounted as `/projects`) | `dev projects` · `dev projects ~/code` |
 | start / stop what's enabled | `dev up` · `dev down` |
@@ -68,6 +69,19 @@ background on the very first start (10–20 min, Ruby is compiled; `dev logs wor
 | every container, live, on one screen | `dev lazy` (lazydocker) |
 | rebuild the workstation image | `dev rebuild` |
 | all commands | `dev help` |
+
+`bin/` also holds forwarding shims for **node, npm, npx and pnpm**, so host-side tooling — a git
+hook, a stop gate, an editor task, a Claude Code session running on the host — can call them
+without knowing the container exists. They run `dev run <cmd>`, which is the scripting-safe form
+of `dev <cmd>`: stdin stays open, stdout and stderr stay separate and unmodified, no TTY is
+allocated when non-interactive, and the child's exit code is passed through untouched. Because
+they execute *inside* the workstation, container service names (`postgres-16`, `dynamodb-local`)
+resolve normally — which is the whole point, and the reason they are shims rather than a PATH
+entry pointing at the mounted toolchain. Delete a file to stop shadowing a host-installed one.
+
+`pnpm` and `yarn` come from **corepack**, not mise, so each repo gets the version its
+`package.json` `"packageManager"` field pins; the downloads cache under
+`volumes/vol-workstation/caches/corepack` and survive `dev rebuild`.
 
 Serve on any port in `WS_PORTS_A/B/C` (`.env`: 8000-8099, 3000-3010, 5173-5180) bound to `0.0.0.0`
 inside, and it's `localhost:<port>` on your host:
@@ -136,7 +150,7 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));   // endpoint +
 | Java / Kotlin | Temurin 21 + Maven + Gradle: Spring Boot runs as is (`./mvnw spring-boot:run`, 8080 is published); `kotlinc` for scripts; older projects: `mise use java@temurin-17` |
 | Python / R | `python` + `pip` from mise, no venv needed; R from CRAN (`Rscript -e 'install.packages("tidyverse")'`, library in `/opt/caches/R`); Jupyter: `pip install jupyterlab && jupyter lab --ip 0.0.0.0 --port 8088` → http://localhost:8088 (a freshly pip/gem-installed CLI is not on PATH in scripts until `mise reshim`) |
 | Android / Flutter / React Native | Android SDK in `/opt/caches/android-sdk` (`sdkmanager`, `adb`, licenses accepted; Gradle fetches other platforms itself), `flutter` + Dart, `CHROME_EXECUTABLE` set for Flutter web. Gradle is capped at 3 GB heap with 10-min daemon timeout via `/opt/caches/gradle/gradle.properties` (edit freely). Device: the `android-emulator` service, below |
-| headless Chromium | `chromium --headless --screenshot=x.png https://…` — the wrapper adds `--no-sandbox --disable-dev-shm-usage`, which the container cannot run without. `CHROME_BIN` is set; Playwright, Dusk and Lighthouse work as they are, but **Puppeteer needs `args: ['--no-sandbox','--disable-dev-shm-usage']`** because it launches the binary itself and bypasses the wrapper. Shared cache: the one-time bootstrap installs the **newest** build, so a project that pins a Playwright version should run `playwright install chromium` **from inside that project** (`pnpm exec playwright install chromium`, `npx playwright install chromium`) — its pinned build lands in the same cache, builds sit side by side, and the install skips anything already present. Goldens and pixel comparisons must use the project's pinned build, not `$CHROME_BIN` |
+| headless Chromium | `chromium --headless --screenshot=x.png https://…` — the wrapper adds `--no-sandbox --disable-dev-shm-usage`, which the container cannot run without. `CHROME_BIN` is set; Playwright, Dusk and Lighthouse work as they are, but **Puppeteer needs `args: ['--no-sandbox','--disable-dev-shm-usage']`** because it launches the binary itself and bypasses the wrapper. Shared cache: the one-time bootstrap installs the **newest** build, so a project that pins a Playwright version should run `playwright install chromium` **from inside that project** (`pnpm exec playwright install chromium`, `npx playwright install chromium`) — its pinned build lands in the same cache, **and that install prunes builds its Playwright version does not reference — it deletes the machine-level one**, after which `chromium` and `$CHROME_BIN` resolve to the project's pinned build. Re-run `runtime-bootstrap` (or `npx playwright install chromium` outside any project) to restore a machine default; the next pinned install evicts it again. Goldens and pixel comparisons must use the project's pinned build, not `$CHROME_BIN` |
 | Docker | `docker`, `docker compose`, `lazydocker` talk to the host daemon (the socket is mounted: full control of host Docker, fine for a personal box) |
 | Claude Code | already inside: `claude` CLI (apt stable channel) and the VS Code extension, installed into the container by `dev code`. Nothing to install on the host. Sign in once with a Pro/Max/Team/Enterprise or Console account (the free plan does not include Claude Code); the login persists in `~/.claude` |
 | also | git, curl, jq, ripgrep, mysql/psql/redis clients, sqlite3, python3 + venv |
