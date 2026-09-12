@@ -12,6 +12,9 @@ export MAVEN_OPTS="-Dmaven.repo.local=/opt/caches/m2 ${MAVEN_OPTS:-}"
 export GRADLE_USER_HOME=/opt/caches/gradle
 export PUB_CACHE=/opt/caches/pub            # dart / flutter packages
 export R_LIBS_USER=/opt/caches/R            # R install.packages() target
+export COREPACK_HOME=/opt/caches/corepack   # pnpm/yarn builds corepack downloads
+# never stop to ask "download pnpm X?" — stop hooks and CI run non-interactively
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 # Android SDK: cmdline-tools + platform-tools (adb), installed by android-sdk-setup
 export ANDROID_HOME=/opt/caches/android-sdk

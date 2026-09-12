@@ -13,12 +13,18 @@ echo "== runtimes from /etc/mise/config.toml =="
 mise install --yes
 mise reshim
 
+# pnpm/yarn shims into ~/.local/bin — corepack respects each project's packageManager pin
+corepack enable --install-directory "$HOME/.local/bin" >/dev/null 2>&1 || true
+
 echo "== headless chromium (shared Playwright cache) =="
 # Machine-level default, so every project has a browser without setting one up.
 # Deliberately run outside any project, which means it fetches the NEWEST build --
 # Playwright prints a warning about that here, and it is expected. A project that
 # pins a Playwright version installs its own build into this same shared cache with
-# `playwright install chromium` run from the project; the builds sit side by side.
+# `playwright install chromium` run from the project. That install PRUNES any build its own
+# Playwright version does not reference, so it DELETES this machine-level one (seen 2026-09-12:
+# a project postinstall evicted chromium-1243, leaving its pinned 1234). After that `chromium`
+# and $CHROME_BIN resolve to the project's build. Re-run this step to get a machine default back.
 # Do not make this project-aware: the image has no idea which projects exist.
 npx --yes playwright install chromium
 

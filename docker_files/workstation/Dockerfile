@@ -112,11 +112,17 @@ COPY mise-config.toml /etc/mise/config.toml
 # jpeg dev libs (tidyverse & co). `file` and libglu1-mesa keep `flutter doctor`
 # and the Android tooling quiet. Non-interactive install.packages() needs a
 # mirror preset; the user library goes to the persistent cache (R_LIBS_USER).
+# postgresql-16 is the *server* (initdb, pg_ctl, postgres): test suites that spin up a
+# throwaway cluster need it locally — the postgres-16 service is a different thing.
+# libpq-dev only for /usr/bin/pg_config: postgresql-client-16 ships pg_config inside
+# /usr/lib/postgresql/16/bin, which is not on PATH (psql is a pg_wrapper symlink, it is not).
+# Costs libllvm17t64 (~120 MB, postgres JIT). Kept in this late layer so PHP/Chromium stay cached.
 RUN curl -fsSL https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc -o /etc/apt/keyrings/cran.asc && \
     echo "deb [signed-by=/etc/apt/keyrings/cran.asc] https://cloud.r-project.org/bin/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME")-cran40/" \
       > /etc/apt/sources.list.d/cran.list && \
     apt-get update && apt-get install -y --no-install-recommends \
       libyaml-dev libgmp-dev \
+      postgresql-16 libpq-dev \
       r-base r-base-dev \
       libcurl4-openssl-dev libxml2-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
       libfreetype-dev libpng-dev libtiff-dev libjpeg-dev \
@@ -157,6 +163,8 @@ ENV MISE_DATA_DIR=/opt/mise \
     ANDROID_SDK_ROOT=/opt/caches/android-sdk \
     PUB_CACHE=/opt/caches/pub \
     R_LIBS_USER=/opt/caches/R \
+    COREPACK_HOME=/opt/caches/corepack \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     PATH=/home/dev/.local/bin:/opt/mise/shims:/home/dev/.cargo/bin:/opt/caches/android-sdk/cmdline-tools/latest/bin:/opt/caches/android-sdk/platform-tools:/opt/caches/gopath/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Default user is `dev`: `docker exec`, VS Code attach and `dev` all land

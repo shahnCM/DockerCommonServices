@@ -6,7 +6,7 @@ set -u
 
 # 1. own the bind mounts (top level only — never -R over big caches)
 sudo chown dev:dev /home/dev /opt/mise /opt/caches /projects 2>/dev/null || true
-for d in composer npm go-mod gopath m2 gradle mise-cache ms-playwright android-sdk pub R; do
+for d in composer npm go-mod gopath m2 gradle mise-cache ms-playwright android-sdk pub R corepack; do
   mkdir -p "/opt/caches/$d"
 done
 
@@ -44,7 +44,16 @@ if [ ! -e /home/dev/.local/bin/php ]; then
   php-default "${PHP_DEFAULT:-8.3}" || true
 fi
 
-# 5. one-time install of every mise runtime + Chromium + the Android SDK
+# 5. pnpm / yarn via corepack, into ~/.local/bin (first on PATH, persists in the
+#    home volume). Deliberately NOT a mise tool: corepack honours each repo's
+#    package.json "packageManager" pin, so two projects wanting different pnpm
+#    majors both work. Needs node, so it is a no-op until the bootstrap has run.
+if command -v corepack >/dev/null 2>&1 && [ ! -e /home/dev/.local/bin/pnpm ]; then
+  mkdir -p /home/dev/.local/bin
+  corepack enable --install-directory /home/dev/.local/bin >/dev/null 2>&1 || true
+fi
+
+# 6. one-time install of every mise runtime + Chromium + the Android SDK
 #    into the persistent volumes. Runs in the background so the container
 #    is usable immediately (PHP works right away). A leftover .bootstrapping
 #    marker can only be stale at container start, so retry.
