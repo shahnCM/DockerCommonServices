@@ -4,6 +4,7 @@
 #   dev setup              first run: .env, folders, VS Code config, build & start
 #   dev                    shell inside the workstation (lands in your current project)
 #   dev <cmd...>           run a command inside, from where you are   e.g. dev php8.1 -v
+#   dev run <cmd...>       same, but exact passthrough for scripts/hooks (no TTY, clean streams)
 #   dev code [project]     VS Code attached to the workstation — run again for more windows
 #
 #   dev up [service...]    start the enabled services (or just the named ones)
@@ -32,7 +33,7 @@ dcA() { docker compose --profile '*' "$@"; }   # every service, enabled or not
 die()  { echo "dev: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required — $2"; }
 
-usage() { sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 # ---- the resolved model: absolute paths, defaults applied, as Compose sees it
 _model=""
@@ -63,7 +64,7 @@ target_dir() {
 }
 
 running()   { dc ps --status running --services 2>/dev/null | grep -qx "$SVC"; }
-ensure_up() { running || { echo "▸ starting $SVC …"; prepare_dirs; dc up -d "$SVC"; }; }
+ensure_up() { running || { echo "▸ starting $SVC …" >&2; prepare_dirs; dc up -d "$SVC" >&2; }; }
 need_env()  { [ -f .env ] || die "no .env yet — run:  dev setup"; }
 
 # ---- COMPOSE_PROFILES in .env -----------------------------------------------
@@ -258,6 +259,18 @@ case "${1:-}" in
   vscode)       shift; vscode_install "${1:-}" ;;
   vscode-server) need_env; ensure_up; vscode_server_seed ;;
   code)         need_env; shift; code_open "${1:-}" ;;
+
+  # Exact passthrough, for scripts and git/stop hooks (bin/node, bin/npm, … use this):
+  # stdout and stderr stay separate and unmodified, stdin stays open, the child's exit
+  # code becomes ours (exec), and no TTY is allocated unless a human is really on both
+  # ends — a TTY would turn every \n into \r\n and break exact-output assertions.
+  run)
+    need_env; shift; [ $# -gt 0 ] || die "usage: dev run <cmd> [args...]"
+    ensure_up
+    if [ -t 0 ] && [ -t 1 ]
+      then exec docker compose exec    -w "$(target_dir)" "$SVC" bash -lc 'exec "$@"' bash "$@"
+      else exec docker compose exec -T -w "$(target_dir)" "$SVC" bash -lc 'exec "$@"' bash "$@"
+    fi ;;
 
   "")           need_env; ensure_up; exec docker compose exec -w "$(target_dir)" "$SVC" bash -l ;;
   *)            need_env; ensure_up

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Forwarding shim — pnpm lives in the workstation container, not on this host.
+# `dev run` is the exact-passthrough mode: stdin stays open, stdout and stderr stay
+# separate and unmodified, no TTY is allocated when non-interactive (a TTY would turn
+# every \n into \r\n), and this process exits with pnpm's own status.
+# Delete this file if you ever install pnpm on the host and want that one instead.
+exec "$(dirname "${BASH_SOURCE[0]}")/dev" run pnpm "$@"
