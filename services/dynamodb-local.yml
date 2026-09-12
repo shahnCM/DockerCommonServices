@@ -10,7 +10,8 @@ services:
     restart: unless-stopped
     # -sharedDb is not optional: without it the db file is keyed by access-key+region,
     # so a seed script and the app can silently see different tables.
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
+    # -disableTelemetry stops the phone-home to AWS on every start (offline-friendly, quieter logs).
+    command: "-jar DynamoDBLocal.jar -sharedDb -disableTelemetry -dbPath /home/dynamodblocal/data"
     working_dir: /home/dynamodblocal
     ports:
       - "${BIND_IP:-127.0.0.1}:18000:8000"
