@@ -116,6 +116,7 @@ All ports bind to `127.0.0.1` unless you set `BIND_IP=0.0.0.0` in `.env`.
 | `postgres-timescale-16` | TimescaleDB on PG 16 | 5432 | `admin` / `admin`, db `benchmark` |
 | `mongodb-7` · `mongodb-7-express` | MongoDB 7 · web UI | 27017 · 8181 | `admin` / `admin` |
 | `dynamodb-local` | DynamoDB + Streams | 18000 (inside: `dynamodb-local:8000`) | `AWS_ENDPOINT_URL_DYNAMODB` is preset in the workstation |
+| `seaweedfs` | S3-compatible object store (`weed mini`) | 8333 (inside: `seaweedfs:8333`) | `AWS_ENDPOINT_URL_S3` is preset; no keys set = accepts any signed request; use path-style addressing |
 | `redis-7` · `redis-7-insight` | Redis 7 · Redis Insight | 6379 · 5540 | no password |
 | `rabbitmq` | RabbitMQ 4 + management | 5672 · UI 15672 | `rabbit` / `rabbit`, vhost `vhost` |
 | `kafka` | Kafka 4 (KRaft, single node) | 29092 (inside: `kafka:9092`) | |

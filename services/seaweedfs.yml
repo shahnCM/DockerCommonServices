@@ -1,0 +1,23 @@
+# SeaweedFS (`weed mini`: master + volume + filer + S3 in one process), S3-compatible
+#   inside the workstation → http://seaweedfs:8333   (AWS_ENDPOINT_URL_S3 is preset)
+#   from the host          → http://localhost:8333
+# No AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY here on purpose: without them S3 runs in
+# allow-all mode and accepts any signed request (like dynamodb-local). If you ever set
+# them, they must equal the workstation's values. Clients need path-style addressing.
+# Entrypoint starts as root, chowns /data to uid 1000 (seaweed) if it differs, then drops to it.
+services:
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.48
+    container_name: seaweedfs
+    profiles: [seaweedfs]
+    restart: unless-stopped
+    command: mini -dir=/data
+    ports:
+      - "${BIND_IP:-127.0.0.1}:8333:8333"   # S3 API only
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+    volumes:
+      - ./volumes/vol-seaweedfs:/data

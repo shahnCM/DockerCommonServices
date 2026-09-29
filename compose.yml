@@ -28,6 +28,7 @@ include:
       - services/quest.yml
       - services/influx.yml
       - services/dynamodb-local.yml
+      - services/seaweedfs.yml
       # ---- cache / queue / search ----------------------------
       - services/redis-7.yml
       - services/rabbitmq.yml
