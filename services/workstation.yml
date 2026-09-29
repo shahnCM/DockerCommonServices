@@ -39,6 +39,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       # anything you serve on these ports inside is reachable at localhost:<port>
-      - "${BIND_IP:-127.0.0.1}:${WS_PORTS_A:-8000-8099}:${WS_PORTS_A:-8000-8099}"
-      - "${BIND_IP:-127.0.0.1}:${WS_PORTS_B:-3000-3010}:${WS_PORTS_B:-3000-3010}"
-      - "${BIND_IP:-127.0.0.1}:${WS_PORTS_C:-5173-5180}:${WS_PORTS_C:-5173-5180}"
+      # WS_BIND_IP is separate from BIND_IP on purpose: 0.0.0.0 here opens dev servers to the LAN without opening the databases
+      - "${WS_BIND_IP:-127.0.0.1}:${WS_PORTS_A:-8000-8099}:${WS_PORTS_A:-8000-8099}"
+      - "${WS_BIND_IP:-127.0.0.1}:${WS_PORTS_B:-3000-3010}:${WS_PORTS_B:-3000-3010}"
+      - "${WS_BIND_IP:-127.0.0.1}:${WS_PORTS_C:-5173-5180}:${WS_PORTS_C:-5173-5180}"

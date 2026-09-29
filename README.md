@@ -104,7 +104,7 @@ Other Compose projects can join the workstation's network with
 
 Every service is one file in `services/`, opt-in through its name in `COMPOSE_PROFILES` (`.env`).
 Hostnames inside the network are the service names; from the host use `localhost:<port>`.
-All ports bind to `127.0.0.1` unless you set `BIND_IP=0.0.0.0` in `.env`.
+All ports bind to `127.0.0.1` unless you set `BIND_IP=0.0.0.0` in `.env`. The workstation port ranges have their own switch, `WS_BIND_IP=0.0.0.0`, so a phone can reach a dev server while the databases stay on loopback.
 
 | service | what | host port | login / notes |
 |---|---|---|---|
